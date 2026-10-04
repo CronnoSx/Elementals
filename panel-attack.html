@@ -3169,24 +3169,37 @@ function aiChooseMove(level) {
   const c = state.cursor;
   for (const m of moves) m.score -= (Math.abs(m.swaps[0].x - c.x) + Math.abs(m.swaps[0].y - c.y)) * 0.3;
   moves.sort((a, b) => b.score - a.score);
-  if (Math.random() < level.errorChance) return moves[Math.floor(Math.random() * Math.min(moves.length, 8))];
+  if (moves[0].score > 0.5 && Math.random() < level.errorChance) {
+    const miss = aiHumanMistake(moves);
+    if (miss) return miss;
+  }
   return moves[0].score > 0.5 ? moves[0] : null;
 }
 
 /**
- * Aquecimento: no começo da partida a IA joga mais devagar e vai acelerando
- * até o ritmo normal do nível em AI_WARMUP_MS.
+ * Erros "de gente": em vez de uma jogada aleatória, a IA
+ * - se contenta com uma jogada modesta (um clear simples de 3) e não enxerga
+ *   o combo ou a cadeia maior que estava disponível; ou
+ * - faz uma troca sem efeito, perto do cursor, como quem se distrai.
+ * Nunca escolhe uma jogada que piora a própria pilha (score negativo).
  */
-const AI_WARMUP_MS = 45000;
-const AI_WARMUP_SLOWDOWN = 1.8; // no segundo zero, a IA é 1,8x mais lenta
+const AI_MISTAKE_FIDGET_SHARE = 0.35; // parte dos erros que são trocas sem efeito
+const AI_MODEST_MAX_SHARE = 0.4;      // jogada "modesta": até 40% do valor da melhor
+function aiHumanMistake(moves) {
+  const best = moves[0].score;
+  const modest = moves.filter(m => m.score > 0.5 && m.score <= best * AI_MODEST_MAX_SHARE);
+  const idle = moves.filter(m => m.swaps.length === 1 && Math.abs(m.score) < 2);
+  const pick = (list) => list[Math.floor(Math.random() * Math.min(list.length, 4))]; // já vêm ordenadas: perto do cursor primeiro
+  if (idle.length && (Math.random() < AI_MISTAKE_FIDGET_SHARE || !modest.length)) return pick(idle);
+  if (modest.length) return pick(modest);
+  return null;
+}
 
 function updateAI(dt) {
   const ai = state.ai;
   const level = AI_LEVELS[match.aiLevel];
-  const warm = Math.min(1, state.elapsedMs / AI_WARMUP_MS);
-  const pace = 1 / (AI_WARMUP_SLOWDOWN - (AI_WARMUP_SLOWDOWN - 1) * warm);
-  ai.thinkTimer -= dt * pace;
-  ai.moveTimer -= dt * pace;
+  ai.thinkTimer -= dt;
+  ai.moveTimer -= dt;
   if (!ai.plan && ai.thinkTimer <= 0) {
     ai.plan = aiChooseMove(level);
     ai.thinkTimer = ai.plan ? level.thinkMs * (0.7 + Math.random() * 0.6) : level.thinkMs * 0.5;
