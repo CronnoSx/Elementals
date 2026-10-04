@@ -1,0 +1,4280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edição Elemental</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap">
+<style>
+  /* =========================================================
+     STYLE
+     ========================================================= */
+  :root {
+    --bg: #14161f;
+    --panel: #1e2130;
+    --panel-2: #272b3e;
+    --line: #3a3f58;
+    --text: #e8eaf2;
+    --muted: #8a90a8;
+    --accent: #ffd84a;
+    --danger: #ff5a64;
+    --primary: #4a6cf7;
+    --primary-hover: #5b7bff;
+    --display: "Lilita One", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  /* Lilita One só tem um peso: o 800 deixa a fonte reserva em negrito
+     sem gerar negrito falso na Lilita */
+  .game-title, .opt-title, .overlay h2, #side h1 { font-weight: 800 !important; font-synthesis: none; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #app { width: 100%; padding: 16px; }
+  .screen { width: 100%; display: flex; justify-content: center; }
+
+  /* ---------- Menu / Opções ---------- */
+  .menu-card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 28px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+  }
+  .game-title {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: 46px;
+    line-height: 1;
+    letter-spacing: 2px;
+    margin: 0;
+    text-align: center;
+  }
+  .game-sub {
+    margin-top: 8px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+  }
+  .tiles { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .tiles canvas { width: 40px; height: 40px; display: block; }
+  .menu-list, .actions { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+  .menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    padding: 13px 16px;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: left;
+    color: var(--text);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .menu-btn:hover:not(:disabled), .menu-btn:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+    background: #2f3450;
+  }
+  .menu-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .menu-btn.primary:hover, .menu-btn.primary:focus-visible { background: var(--primary-hover); border-color: #fff; }
+  .menu-btn:disabled { cursor: not-allowed; color: var(--muted); }
+  .badge {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 99px;
+    background: #33384f;
+    color: var(--muted);
+  }
+  .menu-hint { font-size: 12px; color: var(--muted); }
+  .opt-title { font-family: var(--display); font-weight: 400; font-size: 30px; margin: 0; letter-spacing: 1px; }
+  .opt-row { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+  .opt-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .seg { display: flex; gap: 6px; }
+  .seg button {
+    flex: 1;
+    padding: 9px 6px;
+    font: inherit;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .seg button:focus-visible { outline: none; border-color: var(--accent); }
+  .seg button[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .credits {
+    width: 100%;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--muted);
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+  }
+  .credits strong { color: var(--text); }
+
+  /* ---------- Jogo ---------- */
+  #gameScreen { flex-wrap: wrap; align-items: flex-start; gap: 24px; }
+  .arena { position: relative; display: flex; gap: 16px; align-items: flex-start; max-width: 100%; }
+  .board-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .board-wrap { position: relative; max-width: 100%; }
+  .board-canvas {
+    display: block;
+    width: 308px;
+    max-width: 100%;
+    height: auto;
+    background: #0c0e15;
+    border: 3px solid var(--line);
+    border-radius: 6px;
+  }
+  #board:focus { outline: none; border-color: #5a6390; }
+  /* Versus: dois tabuleiros lado a lado, reduzidos em telas estreitas */
+  .arena.versus .board-canvas { width: min(308px, calc((100vw - 72px) / 2)); }
+  .board-col.p2 .board-canvas { border-color: #6b4a3a; }
+  .board-hud {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 60px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: var(--panel);
+  }
+  .board-col.p2 .board-hud { flex-direction: row-reverse; text-align: right; }
+  .hud-art { position: relative; width: 34px; height: 50px; flex: none; }
+  .hud-art > * { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); height: 100%; width: auto; max-width: none; }
+  .hud-art .char-placeholder { width: 30px; font-size: 14px; border-radius: 14px 14px 6px 6px; }
+  .hud-art .char-art { height: 100%; }
+  .hud-info { min-width: 0; }
+  .hud-name { font-family: var(--display); font-size: 16px; letter-spacing: .5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+  .hud-tag { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .hud-crystal { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .board-col.p2 .hud-crystal { margin-left: 0; margin-right: auto; align-items: flex-start; }
+  .crystal-mini { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end; gap: 4px; min-height: 9px; max-width: 120px; }
+  .board-col.p2 .crystal-mini { justify-content: flex-start; }
+  .crystal-shape { display: grid; gap: 1px; }
+  .crystal-shape i { display: block; width: 5px; height: 5px; border-radius: 1px; outline: 1px solid rgba(255,255,255,.6); }
+  .crystal-mini.empty { color: var(--muted); font-size: 11px; }
+  .crystal-bar { width: 56px; height: 4px; border-radius: 2px; background: #2c3044; overflow: hidden; }
+  .crystal-bar span { display: block; height: 100%; width: 0; background: var(--accent); }
+  @media (max-width: 560px) {
+    .hud-art { display: none; }
+    .hud-name { font-size: 13px; max-width: 70px; }
+  }
+  .overlay h2.win { color: #5fe07a; }
+  .overlay {
+    position: absolute;
+    inset: 3px;
+    border-radius: 4px;
+    background: rgba(8, 9, 14, 0.84);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 16px;
+    text-align: center;
+  }
+  .overlay h2 { font-family: var(--display); font-weight: 400; font-size: 42px; letter-spacing: 1px; margin: 0; }
+  .overlay h2.danger { color: var(--danger); }
+  .overlay .actions { width: min(230px, 100%); }
+  .summary { display: grid; grid-template-columns: repeat(3, auto); gap: 4px 18px; margin: 0; }
+  .summary dt { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .summary dd { margin: 0; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; grid-row: 2; }
+  #side {
+    width: 210px;
+    background: var(--panel);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  #side h1 { font-family: var(--display); font-weight: 400; font-size: 24px; margin: 0 0 12px; letter-spacing: 1px; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  .stat .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .stat .value { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat.wide { grid-column: 1 / -1; }
+  .stat.wide .value { font-size: 32px; }
+  #speed.fast { color: var(--accent); }
+  #speed.frenzy { color: var(--danger); }
+  #speed.turbo { color: #7fd6ff; }
+  #chainMsg { color: var(--accent); font-weight: 700; min-height: 22px; font-size: 18px; margin-top: 10px; }
+  .side-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .side-btn {
+    flex: 1;
+    padding: 10px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    border: 0;
+    border-radius: 6px;
+    background: var(--primary);
+    color: #fff;
+    cursor: pointer;
+  }
+  .side-btn:hover { background: var(--primary-hover); }
+  .side-btn.secondary { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); }
+  .side-btn.secondary:hover { background: #2f3450; }
+  .help { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 16px; }
+  kbd {
+    background: #2c3044; border: 1px solid #454b66; border-radius: 4px;
+    padding: 0 5px; font-size: 12px; font-family: inherit; color: var(--text);
+  }
+  .menu-btn kbd { font-weight: 500; }
+
+  /* ---------- Opções: áudio ---------- */
+  .opt-section {
+    width: 100%;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 6px;
+  }
+  .opt-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .opt-name { font-weight: 600; }
+  .toggle {
+    min-width: 112px;
+    padding: 7px 12px;
+    font: inherit;
+    font-weight: 700;
+    color: var(--muted);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 99px;
+    cursor: pointer;
+  }
+  .toggle[aria-pressed="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .toggle:focus-visible, .bind-slot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .slider-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 12px; }
+  .slider-row label { grid-column: 1 / -1; }
+  .slider-row input[type="range"] { width: 100%; accent-color: var(--primary); }
+  .slider-row input[type="range"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+  .slider-row output { min-width: 44px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* ---------- Controles (remapeamento) ---------- */
+  .menu-card.wide { max-width: 780px; }
+  .bind-status {
+    margin: 0;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--panel-2);
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .bind-status.active { background: var(--accent); color: #14161f; font-weight: 700; }
+  .bind-wrap { width: 100%; overflow-x: auto; }
+  .bind-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .bind-table th, .bind-table td { padding: 5px 4px; text-align: left; }
+  .bind-table thead th { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .bind-table tbody th { font-weight: 600; padding-right: 10px; min-width: 130px; }
+  .bind-table tbody tr + tr { border-top: 1px solid var(--line); }
+  .bind-slot {
+    width: 100%;
+    min-width: 96px;
+    padding: 7px 8px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--text);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .bind-slot:hover { border-color: var(--accent); }
+  .bind-slot.empty { color: var(--muted); }
+  .bind-slot.listening { background: var(--accent); border-color: var(--accent); color: #14161f; }
+  .pad-status { width: 100%; font-size: 13px; color: var(--muted); }
+  .actions.row { flex-direction: row; flex-wrap: wrap; }
+  .actions.row .menu-btn { flex: 1 1 200px; }
+  .help .muted { color: var(--muted); }
+  /* ---------- Single Player / criação de personagem / mapa ---------- */
+  .create-step { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .step-hint { margin: 0; color: var(--muted); font-size: 14px; text-align: center; }
+  .gender-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 28px; padding-block: 8px; }
+  .gender-btn {
+    width: 132px;
+    height: 132px;
+    border-radius: 50%;
+    border: 3px solid var(--line);
+    background: var(--panel-2);
+    color: var(--g);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: transform .12s ease, border-color .12s ease;
+  }
+  .gender-btn svg { width: 64px; height: 64px; }
+  .gender-btn.female { --g: #ff6fa8; }
+  .gender-btn.male { --g: #57a6ff; }
+  .gender-btn:hover, .gender-btn:focus-visible {
+    outline: none;
+    border-color: var(--g);
+    transform: scale(1.05);
+    background: color-mix(in srgb, var(--g) 16%, var(--panel-2));
+  }
+  .char-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));   /* colunas iguais, independentes do sprite */
+    gap: 10px;
+  }
+  /* Área de seleção larga o bastante para o sprite mais largo (o 13, de punho erguido) */
+  .menu-card.create-card { max-width: 980px; }
+  @media (min-width: 1000px) {
+    .char-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  }
+  @media (max-width: 520px) {
+    .char-card { height: 134px; }
+    .char-card .char-art { height: 112px; }
+  }
+  .char-card {
+    position: relative;
+    padding: 10px 4px 6px;
+    border-radius: 10px;
+    border: 2px solid var(--line);
+    background: var(--panel-2);
+    cursor: pointer;
+    display: grid;
+    place-items: end center;
+    height: 178px;
+    overflow: hidden;   /* o desenho nunca invade o cartão vizinho */
+  }
+  .char-card:hover, .char-card:focus-visible { outline: none; border-color: var(--accent); background: #2f3450; }
+  .char-card[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+  .char-num {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    background: #14161f;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+  }
+  /* Todos com a mesma altura (não encolhe o sprite para caber na largura) */
+  .char-art { height: 156px; width: auto; max-width: none; display: block; }
+  .char-placeholder {
+    height: 150px;
+    width: 76px;
+    border: 2px dashed var(--line);
+    border-radius: 38px 38px 10px 10px;
+    color: var(--muted);
+    font-size: 28px;
+    font-weight: 800;
+    display: grid;
+    place-items: center;
+  }
+  .name-step { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 24px; width: 100%; }
+  .name-preview { height: 200px; display: grid; place-items: end center; }
+  .name-preview .char-art { height: 200px; }
+  .name-form { display: flex; flex-direction: column; gap: 10px; width: min(280px, 100%); }
+  .name-form input {
+    font: inherit;
+    font-size: 18px;
+    font-weight: 600;
+    padding: 12px 14px;
+    color: var(--text);
+    background: var(--panel-2);
+    border: 2px solid var(--line);
+    border-radius: 8px;
+  }
+  .name-form input:focus { outline: none; border-color: var(--accent); }
+  .map-wrap { width: 100%; }
+  .map { position: relative; width: min(560px, 100%); aspect-ratio: 1; margin: 0 auto; }
+  .map-lines { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .map-lines line { stroke: #4b5170; stroke-width: 4; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .map-center {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 34%;
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 3px solid var(--accent);
+    background: radial-gradient(circle at 50% 35%, #34395a, var(--panel-2) 70%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    overflow: hidden;
+    padding-bottom: 7%;
+    gap: 1%;
+  }
+  .hero-art { position: relative; height: 66%; width: 100%; flex: none; }
+  .hero-art > * { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); height: 100%; }
+  .hero-art .char-art { width: auto; max-width: none; }
+  .hero-art .char-placeholder { width: auto; aspect-ratio: 1 / 2; font-size: 20px; }
+  .hero-name {
+    font-family: var(--display);
+    font-size: clamp(14px, 3.6vw, 22px);
+    letter-spacing: 1px;
+    max-width: 90%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .biome {
+    position: absolute;
+    width: 23%;
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.28);
+    background: radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.38), transparent 58%), var(--c);
+    box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.22), 0 4px 0 rgba(0, 0, 0, 0.35);
+    color: #fff;
+    font: inherit;
+    font-weight: 800;
+    font-size: clamp(10px, 2.5vw, 14px);
+    line-height: 1.1;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3%;
+    transition: transform .12s ease;
+  }
+  .biome svg { width: 40%; height: auto; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45)); }
+  .biome small { font-size: 0.78em; font-weight: 700; opacity: 0.9; }
+  .biome:hover, .biome:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; transform: translate(-50%, -50%) scale(1.07); }
+  .match-sub { color: var(--muted); font-size: 13px; margin: -6px 0 10px; }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    max-width: calc(100% - 32px);
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--accent);
+    background: var(--panel-2);
+    color: var(--text);
+    font-weight: 600;
+    z-index: 10;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ======================= MENU PRINCIPAL ======================= -->
+  <section id="menuScreen" class="screen">
+    <div class="menu-card">
+      <div>
+        <h1 class="game-title" id="gameTitle">Edição Elemental</h1>
+        <div class="game-sub">Puzzle de elementos</div>
+      </div>
+      <div class="tiles" id="menuTiles" aria-hidden="true"></div>
+      <nav class="menu-list" id="menuList">
+        <button class="menu-btn primary" id="btnSingle">Single Player <span aria-hidden="true">▶</span></button>
+        <button class="menu-btn" id="btnVersus">Versus vs IA <span aria-hidden="true">▶</span></button>
+        <button class="menu-btn" disabled>Multiplayer <span class="badge">Em breve</span></button>
+        <button class="menu-btn" id="btnOptions">Opções / Créditos</button>
+      </nav>
+      <div class="menu-hint" id="menuHint">↑ ↓ para escolher · Enter para confirmar</div>
+    </div>
+  </section>
+
+  <!-- ======================= SINGLE PLAYER ======================= -->
+  <section id="singleScreen" class="screen" hidden>
+    <div class="menu-card">
+      <h2 class="opt-title">Single Player</h2>
+      <nav class="menu-list">
+        <button class="menu-btn primary" id="btnCampaign">Campanha <span aria-hidden="true">▶</span></button>
+        <button class="menu-btn" id="btnEndless">Endless <span aria-hidden="true">▶</span></button>
+        <button class="menu-btn" id="btnEndlessBeginner">Endless · Iniciante <span class="badge">5 elementos</span></button>
+        <button class="menu-btn" disabled>Puzzle Mode <span class="badge">Em breve</span></button>
+      </nav>
+      <div class="actions">
+        <button class="menu-btn" id="btnSingleBack">Voltar <kbd>Esc</kbd></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= VERSUS VS IA ======================= -->
+  <section id="versusScreen" class="screen" hidden>
+    <div class="menu-card">
+      <h2 class="opt-title">Versus vs IA</h2>
+      <p class="step-hint">Escolha a dificuldade do adversário</p>
+      <nav class="menu-list" id="aiLevelList">
+        <button class="menu-btn" data-level="easy">Fácil <span class="badge">Lento e erra mais</span></button>
+        <button class="menu-btn" data-level="easy" data-beginner="1">Fácil · Iniciante <span class="badge">5 elementos</span></button>
+        <button class="menu-btn" data-level="normal">Normal <span class="badge">Monta chains</span></button>
+        <button class="menu-btn" data-level="hard">Difícil <span class="badge">Rápido e calcula</span></button>
+      </nav>
+      <div class="actions">
+        <button class="menu-btn" id="btnVersusBack">Voltar <kbd>Esc</kbd></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= CRIAÇÃO DE PERSONAGEM ======================= -->
+  <section id="createScreen" class="screen" hidden>
+    <div class="menu-card wide create-card">
+      <h2 class="opt-title">Criar personagem</h2>
+
+      <!-- 1. Gênero: só os símbolos, sem texto -->
+      <div class="create-step" id="stepGender">
+        <div class="gender-row">
+          <button class="gender-btn male" data-gender="m" aria-label="Masculino">
+            <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="26" cy="38" r="15"/><path d="M37 27 54 10M41 10h13v13"/>
+            </svg>
+          </button>
+          <button class="gender-btn female" data-gender="f" aria-label="Feminino">
+            <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" aria-hidden="true">
+              <circle cx="32" cy="23" r="15"/><path d="M32 38v21M22 50h20"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. Personagem: só a fileira do gênero escolhido -->
+      <div class="create-step" id="stepCharacter" hidden>
+        <p class="step-hint">Escolha seu personagem</p>
+        <div class="char-grid" id="charGrid"></div>
+      </div>
+
+      <!-- 3. Nome -->
+      <div class="create-step" id="stepName" hidden>
+        <div class="name-step">
+          <div class="name-preview" id="namePreview"></div>
+          <form class="name-form" id="nameForm">
+            <label class="opt-label" for="heroName">Nome do personagem</label>
+            <input type="text" id="heroName" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Humano">
+            <button class="menu-btn primary" type="submit" id="btnNameConfirm">Confirmar <span aria-hidden="true">▶</span></button>
+          </form>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="menu-btn" id="btnCreateBack">Voltar <kbd>Esc</kbd></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= MAPA DA CAMPANHA ======================= -->
+  <section id="mapScreen" class="screen" hidden>
+    <div class="menu-card wide">
+      <h2 class="opt-title">Campanha</h2>
+      <p class="step-hint">Escolha um bioma para jogar</p>
+      <div class="map-wrap">
+        <div class="map" id="campaignMap">
+          <svg class="map-lines" id="mapLines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <div class="map-center" id="mapCenter">
+            <div class="hero-art" id="mapHeroArt"></div>
+            <div class="hero-name" id="mapHeroName">Humano</div>
+          </div>
+        </div>
+      </div>
+      <div class="actions row">
+        <button class="menu-btn" id="btnNewHero">Novo personagem</button>
+        <button class="menu-btn" id="btnMapBack">Voltar <kbd>Esc</kbd></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= OPÇÕES / CRÉDITOS ======================= -->
+  <section id="optionsScreen" class="screen" hidden>
+    <div class="menu-card">
+      <h2 class="opt-title">Opções</h2>
+
+      <div class="opt-section">Áudio</div>
+      <div class="opt-row">
+        <div class="opt-head">
+          <span class="opt-name" id="lblMusic">Música</span>
+          <button class="toggle" id="optMusicOn" aria-labelledby="lblMusic"></button>
+        </div>
+        <div class="slider-row">
+          <label class="opt-label" for="optMusicVolume">Volume da música</label>
+          <input type="range" id="optMusicVolume" min="0" max="100" step="5">
+          <output id="optMusicVolumeOut" for="optMusicVolume"></output>
+        </div>
+      </div>
+      <div class="opt-row">
+        <div class="opt-head">
+          <span class="opt-name" id="lblSfx">Efeitos sonoros (SFX)</span>
+          <button class="toggle" id="optSfxOn" aria-labelledby="lblSfx"></button>
+        </div>
+        <div class="slider-row">
+          <label class="opt-label" for="optSfxVolume">Volume dos efeitos</label>
+          <input type="range" id="optSfxVolume" min="0" max="100" step="5">
+          <output id="optSfxVolumeOut" for="optSfxVolume"></output>
+        </div>
+      </div>
+
+      <div class="opt-section">Jogo</div>
+      <div class="opt-row">
+        <div class="opt-label" id="lblSpeed">Velocidade inicial da pilha</div>
+        <div class="seg" role="group" aria-labelledby="lblSpeed" id="optSpeed">
+          <button id="optSpeedSlow" data-value="slow">Lenta</button>
+          <button id="optSpeedNormal" data-value="normal">Normal</button>
+          <button id="optSpeedFast" data-value="fast">Rápida</button>
+        </div>
+      </div>
+      <div class="opt-row">
+        <div class="opt-label" id="lblAnim">Velocidade das animações</div>
+        <div class="seg" role="group" aria-labelledby="lblAnim" id="optAnim">
+          <button id="optAnimNormal" data-value="normal">Normal</button>
+          <button id="optAnimFast" data-value="fast">Rápida</button>
+        </div>
+      </div>
+
+      <div class="opt-section">Controles</div>
+      <div class="actions">
+        <button class="menu-btn" id="btnControls">Configurar controles <span aria-hidden="true">▶</span></button>
+      </div>
+
+      <div class="credits">
+        <strong>Créditos</strong><br>
+        <span class="credits-title">Edição Elemental</span>: puzzle de troca de blocos com seis elementos.<br>
+        Feito com HTML, CSS e JavaScript puro. Os blocos elementais são desenhados em canvas
+        a partir da referência “Elemental Puzzle Blocks”. Música e efeitos sonoros sintetizados
+        por <code>sounds/generate_sounds.py</code>.
+      </div>
+      <div class="actions">
+        <button class="menu-btn" id="btnOptionsBack">Voltar <kbd>Esc</kbd></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= CONTROLES (REMAPEAMENTO) ======================= -->
+  <section id="controlsScreen" class="screen" hidden>
+    <div class="menu-card wide">
+      <h2 class="opt-title">Controles</h2>
+      <p class="bind-status" id="bindStatus" role="status" aria-live="polite"></p>
+      <div class="bind-wrap">
+        <table class="bind-table">
+          <thead>
+            <tr><th scope="col">Ação</th><th scope="col" colspan="2">Teclado</th><th scope="col" colspan="2">Controle</th></tr>
+          </thead>
+          <tbody id="bindRows"></tbody>
+        </table>
+      </div>
+      <div class="pad-status" id="padStatus"></div>
+      <div class="actions row">
+        <button class="menu-btn" id="btnBindReset">Restaurar padrão</button>
+        <button class="menu-btn" id="btnControlsBack">Voltar <kbd>Esc</kbd></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= JOGO (ENDLESS) ======================= -->
+  <section id="gameScreen" class="screen" hidden>
+    <div class="arena" id="arena">
+      <!-- Tabuleiro do jogador (esquerda) -->
+      <div class="board-col p1" id="p1Col">
+        <div class="board-hud" id="p1Hud" hidden>
+          <div class="hud-art"></div>
+          <div class="hud-info"><div class="hud-name"></div><div class="hud-tag">Você</div></div>
+          <div class="hud-crystal" title="Cristal sendo montado">
+            <div class="crystal-mini"></div>
+            <div class="crystal-bar"><span></span></div>
+          </div>
+        </div>
+        <div class="board-wrap">
+          <canvas id="board" class="board-canvas" tabindex="0" aria-label="Seu tabuleiro"></canvas>
+        </div>
+      </div>
+      <!-- Tabuleiro da IA (direita, espelhado) -->
+      <div class="board-col p2" id="p2Col" hidden>
+        <div class="board-hud" id="p2Hud">
+          <div class="hud-art"></div>
+          <div class="hud-info"><div class="hud-name"></div><div class="hud-tag">IA</div></div>
+          <div class="hud-crystal" title="Cristal sendo montado">
+            <div class="crystal-mini"></div>
+            <div class="crystal-bar"><span></span></div>
+          </div>
+        </div>
+        <div class="board-wrap">
+          <canvas id="board2" class="board-canvas" aria-label="Tabuleiro da IA"></canvas>
+        </div>
+      </div>
+
+      <div class="overlay" id="pauseOverlay" hidden>
+        <h2>PAUSADO</h2>
+        <div class="actions">
+          <button class="menu-btn primary" id="btnResume" data-no-click-sound>Continuar <kbd id="resumeKey">Esc</kbd></button>
+          <button class="menu-btn" id="btnPauseRestart">Reiniciar <kbd id="pauseRestartKey">R</kbd></button>
+          <button class="menu-btn" id="btnPauseOptions">Opções <kbd>O</kbd></button>
+          <button class="menu-btn" id="btnPauseMenu"><span class="menu-target">Voltar ao Menu</span> <kbd>M</kbd></button>
+        </div>
+      </div>
+
+      <div class="overlay" id="gameOverOverlay" hidden>
+        <h2 class="danger" id="goTitle">GAME OVER</h2>
+        <dl class="summary">
+          <dt>Pontos</dt><dd id="goScore">0</dd>
+          <dt>Tempo</dt><dd id="goTime">00:00</dd>
+          <dt>Chain</dt><dd id="goChain">0</dd>
+        </dl>
+        <div class="actions">
+          <button class="menu-btn primary" id="btnPlayAgain">Jogar Novamente <kbd>Enter</kbd></button>
+          <button class="menu-btn" id="btnGameOverMenu"><span class="menu-target">Voltar ao Menu</span> <kbd>Esc</kbd></button>
+        </div>
+      </div>
+    </div>
+
+    <div id="side">
+      <h1 id="matchTitle">ENDLESS</h1>
+      <div class="match-sub" id="matchSub" hidden></div>
+      <div class="stats">
+        <div class="stat wide"><div class="label">Tempo</div><div class="value" id="timer">00:00</div></div>
+        <div class="stat wide"><div class="label">Pontos</div><div class="value" id="score">0</div></div>
+        <div class="stat"><div class="label">Maior chain</div><div class="value" id="bestChain">0</div></div>
+        <div class="stat"><div class="label">Linhas/min</div><div class="value" id="speed">0</div></div>
+      </div>
+      <div id="chainMsg"></div>
+      <div class="side-actions">
+        <button class="side-btn" id="restartBtn">Reiniciar</button>
+        <button class="side-btn secondary" id="menuBtn">Menu</button>
+      </div>
+      <div class="help" id="helpText"></div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+"use strict";
+
+/* =========================================================
+   CONFIG
+   Todos os valores ajustáveis ficam aqui.
+   ========================================================= */
+const CONFIG = {
+  COLS: 7,
+  ROWS: 14,
+  CELL: 44,                 // tamanho de cada célula em pixels (CSS)
+  START_MIN_HEIGHT: 4,      // altura mínima inicial de cada coluna
+  START_MAX_HEIGHT: 7,      // altura máxima inicial de cada coluna
+  MIN_MATCH: 3,
+
+  // --- Animações (multiplicadas pela opção "Velocidade das animações") ---
+  SWAP_MS: 110,             // duração do deslize de troca
+  FALL_START_SPEED: 0.01,   // velocidade inicial da queda (células por ms)
+  FALL_ACCEL: 0.00008,      // aceleração da queda (células por ms²)
+  CLEAR_MS: 520,            // tempo total da remoção (pisca + encolhe)
+  CLEAR_BLINK_PART: 0.6,    // fração do CLEAR_MS em que os blocos piscam
+
+  // --- Pontuação ---
+  POINTS_PER_BLOCK: 10,
+  COMBO_BONUS_PER_BLOCK: 10,// bônus por bloco extra além de 3 num mesmo passo
+  CHAIN_BONUS: [0, 0, 50, 80, 150, 300, 400, 500, 700, 900, 1100, 1300], // índice = nº da chain
+
+  // --- Rising stack ---
+  // Intervalo (ms) para a pilha subir uma linha inteira.
+  // Antes de FRENZY_TIME_MS: cai exponencialmente do valor inicial (opção do menu)
+  // até RISE_AT_FRENZY_MS. Em FRENZY_TIME_MS: multiplica por FRENZY_MULT (salto
+  // brusco) e passa a cair FRENZY_DECAY_FACTOR vezes mais rápido, até RISE_MIN_MS.
+  RISE_AT_FRENZY_MS: 1500,
+  FRENZY_TIME_MS: 5 * 60 * 1000,
+  FRENZY_MULT: 0.6,
+  FRENZY_DECAY_FACTOR: 1.5,
+  RISE_MIN_MS: 150,
+  TURBO_RISE_MS: 250,       // intervalo por linha enquanto o turbo (F/Q) está segurado
+  SPEED_WARNING_EVERY_MS: 60 * 1000, // aviso de "velocidade aumentou" a cada minuto
+  BANNER_MS: 2000,
+};
+
+// Velocidade inicial da subida (tempo por linha no começo da partida)
+const SPEED_PRESETS = {
+  slow:   12000,
+  normal: 9000,
+  fast:   6000,
+};
+// Multiplicador de duração das animações
+const ANIM_PRESETS = {
+  normal: 1,
+  fast:   0.6,
+};
+
+
+const EMPTY = null; // célula vazia
+
+/* ---------- Identidade ---------- */
+const GAME_TITLE = "Edição Elemental"; // nome do jogo em todos os textos visíveis
+
+/* ---------- Núcleo: tempos dos painéis (multiplicados pela velocidade das animações) ---------- */
+const HOVER_MS = 140;               // painel "flutua" esse tempo antes de cair (após um clear embaixo)
+const FALL_STEP_MS = 30;            // tempo para um painel cair uma casa
+const CRYSTAL_BREAK_HOLD_MS = 260;  // painéis vindos de cristal quebrado ficam parados antes de cair
+const CHAIN_LAND_HOLD_MS = 160;     // painel da cadeia que pousou continua "da cadeia" por este tempo
+                                    // (dá para completar o match com uma troca: cadeia ao vivo)
+
+/* ---------- Pausa da pilha (stop time) ---------- */
+const STOP_TIME_COMBO_BASE_MS = 1000;   // combo de 4: 1000 ms ...
+const STOP_TIME_COMBO_PER_PANEL_MS = 150; // ... + 150 ms por painel além de 4
+const STOP_TIME_CHAIN_PER_LINK_MS = 1500; // cadeia xN: 1500 * (N - 1)
+const STOP_TIME_MAX_MS = 8000;          // os stops somam até este teto
+
+/* ---------- Tempo de graça no topo ---------- */
+const GRACE_TIME_MS = 1500;
+
+/* ---------- Quantidade de elementos ---------- */
+const ELEMENTS_COUNT_DEFAULT = 6;   // padrão de todos os modos (o competitivo é com 6)
+const ELEMENTS_COUNT_BEGINNER = 5;  // opção "Iniciante": só no Endless e no Versus vs IA Fácil
+const BEGINNER_LEFT_OUT_ELEMENT = 6; // no Iniciante, fica de fora o Metal
+
+/* ---------- Cristais (ataque do Versus) ---------- */
+const CRYSTAL_COMBO_WINDOW_MS = 1800;            // clears na janela se somam no cristal pendente
+const CRYSTAL_COMBO_WIDTHS = { 4: 3, 5: 4, 6: 5 }; // combo de N painéis → largura (7+ = largura inteira)
+const CRYSTAL_MAX_HEIGHT = 8;                    // cadeia: x2 = 1 linha, cada elo a mais +1, até isto
+const CRYSTAL_DROP_DELAY_MS = 1500;              // tempo na fila (visível) antes de cair
+const CRYSTAL_BREAK_POINTS_PER_CELL = 20;
+
+/* ---------- IA ---------- */
+// moveMs: tempo entre passos do cursor · thinkMs: pausa entre decisões
+// errorChance: chance de escolher uma jogada pior · depth: 1 = só o clear imediato,
+// 2 = simula a cascata (cadeias), 3 = cascata + olha uma segunda troca
+// slide: até quantas casas a IA arrasta um painel numa jogada · turbo: sobe a pilha quando não há jogada
+const AI_LEVELS = {
+  easy:   { label: "Fácil",   moveMs: 220, thinkMs: 560, errorChance: 0.25, depth: 1, slide: 2, turbo: false },
+  normal: { label: "Normal",  moveMs: 120, thinkMs: 220, errorChance: 0.08, depth: 2, slide: 4, turbo: true },
+  hard:   { label: "Difícil", moveMs: 60,  thinkMs: 80,  errorChance: 0.02, depth: 3, slide: 5, turbo: true },
+};
+// Nomes dos adversários (mesma ordem dos sprites char_01 … char_16)
+const CHARACTER_NAMES = ["Lia", "Bia", "Maya", "Nina", "Duda", "Zuri", "Yumi", "Iara",
+                         "Theo", "Davi", "Rafa", "Léo", "Bruno", "Caio", "Kenji", "Tauã"];
+const BOARD_W = CONFIG.COLS * CONFIG.CELL;
+const BOARD_H = CONFIG.ROWS * CONFIG.CELL;
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+/* =========================================================
+   ELEMENTS
+   Os 6 tipos de bloco. Índice 0 = vazio. Cada elemento define
+   as cores do corpo, a textura e o ícone (desenhados em TILE ART).
+   ========================================================= */
+const TILE_DIR = "tiles/"; // imagens dos blocos (por enquanto só o Metal; os outros são desenhados em código)
+const ELEMENTS = [
+  null,
+  { key: "water",   name: "Água",     light: "#4fe0ff", dark: "#0a5ff0", glow: "rgba(170,245,255,0.55)", rim: "#032c86",
+    texture: textureWater,   icon: iconWater },
+  { key: "fire",    name: "Fogo",     light: "#ffc21a", dark: "#f0300a", glow: "rgba(255,245,140,0.60)", rim: "#7a0f00",
+    texture: textureFire,    icon: iconFire },
+  { key: "earth",   name: "Terra",    light: "#c98a4a", dark: "#6e3a12", glow: "rgba(240,190,120,0.18)", rim: "#4a2208",
+    texture: textureEarth,   icon: iconEarth, matte: true }, // fosca: bem diferente do Metal
+  { key: "air",     name: "Ar",       light: "#f4feff", dark: "#3cd0f2", glow: "rgba(255,255,255,0.65)", rim: "#0f86b2",
+    texture: textureAir,     icon: iconAir },
+  { key: "plant",   name: "Planta",   light: "#9cf55a", dark: "#14a02a", glow: "rgba(220,255,150,0.45)", rim: "#08560f",
+    texture: texturePlant,   icon: iconPlant },
+  { key: "metal",   name: "Metal",    light: "#cfdbea", dark: "#46566c", glow: "rgba(225,238,255,0.30)", rim: "#1b2330",
+    texture: textureMetal,   icon: iconMetal, image: TILE_DIR + "metal.png" }, // imagem; o desenho em código é reserva
+];
+const NUM_COLORS = ELEMENTS.length - 1;
+
+/* =========================================================
+   SETTINGS
+   Opções do menu, salvas no navegador quando possível.
+   ========================================================= */
+const SETTINGS_KEY = "panelAttack.settings";
+const settings = loadSettings();
+
+function loadSettings() {
+  const defaults = {
+    speed: "normal",
+    anim: "normal",
+    musicOn: true,
+    musicVolume: 60,   // 0..100
+    sfxOn: true,
+    sfxVolume: 70,     // 0..100
+    aiLevel: "normal", // última dificuldade escolhida no Versus
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+    const flag = (v, d) => (typeof v === "boolean" ? v : d);
+    const percent = (v, d) => (Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : d);
+    return {
+      speed: saved.speed in SPEED_PRESETS ? saved.speed : defaults.speed,
+      anim: saved.anim in ANIM_PRESETS ? saved.anim : defaults.anim,
+      musicOn: flag(saved.musicOn, defaults.musicOn),
+      musicVolume: percent(saved.musicVolume, defaults.musicVolume),
+      sfxOn: flag(saved.sfxOn, defaults.sfxOn),
+      sfxVolume: percent(saved.sfxVolume, defaults.sfxVolume),
+      aiLevel: saved.aiLevel in AI_LEVELS ? saved.aiLevel : defaults.aiLevel,
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+function saveSettings() {
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* sem armazenamento */ }
+}
+
+const animMult = () => ANIM_PRESETS[settings.anim];
+const swapMs = () => CONFIG.SWAP_MS * animMult();
+const clearMs = () => CONFIG.CLEAR_MS * animMult();
+
+/* =========================================================
+   AUDIO
+   Música e efeitos da pasta sounds/ (gerados por sounds/generate_sounds.py).
+   Usa Web Audio (baixa latência, vários sons ao mesmo tempo). Se os
+   arquivos não puderem ser lidos via fetch (ex.: HTML aberto direto do
+   disco, em file://), usa elementos <audio> como alternativa.
+   ========================================================= */
+const SOUND_DIR = "sounds/";
+// Evento → arquivo(s). Com mais de um arquivo, um é sorteado a cada vez.
+const SOUND_FILES = {
+  swap:      ["swap.wav"],
+  fall:      ["fall_single_a.wav", "fall_single_b.wav", "fall_single_c.wav"],
+  fallMulti: ["fall_multi.wav"],
+  clear3:    ["clear_3.wav"],
+  clear4:    ["clear_4.wav"],
+  clear5:    ["clear_5plus.wav"],
+  chain2:    ["chain_2.wav"],
+  chain3:    ["chain_3.wav"],
+  chain4:    ["chain_4.wav"],
+  chain5:    ["chain_5.wav"],
+  chain6:    ["chain_6.wav"],
+  chain7:    ["chain_7.wav"],
+  chain8:    ["chain_8.wav"],
+  rise:      ["rise.wav"],
+  warning:   ["warning_loop.wav"],
+  gameOver:  ["game_over.wav"],
+  cursor:    ["cursor_move.wav"],
+  uiClick:   ["ui_click.wav"],
+  pause:     ["pause.wav"],
+  unpause:   ["unpause.wav"],
+  crystalBreak:   ["crystal_break.wav"],
+  crystalSend:    ["crystal_send.wav"],
+  crystalLand:    ["crystal_land.wav"],
+  crystalWarning: ["crystal_warning.wav"],
+  victory:        ["victory.wav"],
+};
+const MUSIC_FILE = "music_endless.wav";
+const MUSIC_MIX = 0.6;        // a música fica um pouco abaixo dos efeitos
+const MUSIC_DUCK = 0.35;      // volume relativo da música com o jogo pausado
+const MUSIC_MENU_LEVEL = 0.6; // volume relativo da música nos menus
+const MAX_CHAIN_SOUND = 8;
+const AI_AUDIBLE_SOUNDS = new Set(["crystalBreak", "crystalSend", "crystalLand", "chain2", "chain3",
+  "chain4", "chain5", "chain6", "chain7", "chain8"]);
+const AI_SOUND_VOLUME = 0.45;          // chains acima disso repetem o som da x8
+const FALL_MULTI_MIN_BLOCKS = 3;    // a partir de quantos blocos a queda usa o som "vários"
+const RISE_SOUND_MIN_GAP_MS = 400;  // evita metralhar o som de subida no turbo / modo frenético
+
+const Sound = {
+  ctx: null,
+  master: null,
+  buffers: {},     // arquivo → AudioBuffer (Web Audio)
+  elements: {},    // arquivo → HTMLAudioElement (alternativa)
+  started: false,
+  loop: null,      // som em loop tocando agora (aviso de perigo)
+  music: null,     // música tocando agora
+  lastPlayed: {},
+
+  /** Navegadores só liberam áudio após um gesto do jogador (tecla ou clique). */
+  unlock() {
+    if (!this.started) {
+      this.started = true;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) {
+        this.ctx = new AC();
+        this.master = this.ctx.createGain();
+        this.master.connect(this.ctx.destination);
+      }
+      new Set([...Object.values(SOUND_FILES).flat(), MUSIC_FILE]).forEach(file => this.load(file));
+    }
+    if (this.ctx && this.ctx.state === "suspended") this.ctx.resume();
+  },
+
+  async load(file) {
+    const url = SOUND_DIR + file;
+    try {
+      if (!this.ctx) throw new Error("sem Web Audio");
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      this.buffers[file] = await this.ctx.decodeAudioData(await res.arrayBuffer());
+    } catch {
+      const el = new Audio(url);
+      el.preload = "auto";
+      this.elements[file] = el;
+    }
+  },
+
+  volume() {
+    return settings.sfxOn ? settings.sfxVolume / 100 : 0;
+  },
+
+  musicVolume() {
+    return settings.musicOn ? (settings.musicVolume / 100) * MUSIC_MIX : 0;
+  },
+
+  pick(name) {
+    const list = SOUND_FILES[name];
+    return list[Math.floor(Math.random() * list.length)];
+  },
+
+  /**
+   * Toca um efeito uma vez.
+   * volume: multiplicador sobre o volume geral; gap: intervalo mínimo (ms) desde a última vez.
+   */
+  play(name, { volume = 1, gap = 0, force = false } = {}) {
+    // Sons do tabuleiro da IA: só os importantes, mais baixos (senão vira barulho)
+    if (!force && typeof state !== "undefined" && state && state.isAI) {
+      if (!AI_AUDIBLE_SOUNDS.has(name)) return;
+      volume *= AI_SOUND_VOLUME;
+    }
+    const v = this.volume() * volume;
+    if (!this.started || v <= 0) return;
+    const now = performance.now();
+    if (gap && now - (this.lastPlayed[name] ?? -Infinity) < gap) return;
+    this.lastPlayed[name] = now;
+
+    const file = this.pick(name);
+    if (this.buffers[file]) {
+      const src = this.ctx.createBufferSource();
+      const gain = this.ctx.createGain();
+      src.buffer = this.buffers[file];
+      gain.gain.value = v;
+      src.connect(gain).connect(this.master);
+      src.start();
+    } else if (this.elements[file]) {
+      const el = this.elements[file].cloneNode();
+      el.volume = Math.min(1, v);
+      el.play().catch(() => {});
+    }
+  },
+
+  /** Começa a tocar um arquivo em loop; devolve {stop, setVolume} ou null se não carregou. */
+  startLooped(file, v) {
+    if (this.buffers[file]) {
+      const src = this.ctx.createBufferSource();
+      const gain = this.ctx.createGain();
+      src.buffer = this.buffers[file];
+      src.loop = true;
+      gain.gain.value = v;
+      src.connect(gain).connect(this.master);
+      src.start();
+      return { stop: () => src.stop(), setVolume: (x) => { gain.gain.value = x; } };
+    }
+    if (this.elements[file]) {
+      const el = this.elements[file].cloneNode();
+      el.loop = true;
+      el.volume = Math.min(1, v);
+      el.play().catch(() => {});
+      return { stop: () => el.pause(), setVolume: (x) => { el.volume = Math.min(1, x); } };
+    }
+    return null;
+  },
+
+  /** Mantém um efeito em loop ligado ou desligado (chamado a cada frame). */
+  setLoop(name, on) {
+    const v = this.volume();
+    if (!on || v <= 0 || !this.started) {
+      this.stopLoop();
+      return;
+    }
+    if (this.loop) this.loop.setVolume(v);
+    else this.loop = this.startLooped(SOUND_FILES[name][0], v);
+  },
+
+  /** Mantém a música ligada ou desligada (chamado a cada frame); `level` abaixa o volume. */
+  setMusic(on, level = 1) {
+    const v = this.musicVolume() * level;
+    if (!on || v <= 0 || !this.started) {
+      this.stopMusic();
+      return;
+    }
+    if (this.music) this.music.setVolume(v);
+    else this.music = this.startLooped(MUSIC_FILE, v);
+  },
+
+  stopMusic() {
+    if (this.music) {
+      this.music.stop();
+      this.music = null;
+    }
+  },
+
+  stopLoop() {
+    if (this.loop) {
+      this.loop.stop();
+      this.loop = null;
+    }
+  },
+};
+
+// O primeiro gesto do jogador libera o áudio e começa a carregar os arquivos
+for (const type of ["pointerdown", "keydown"]) {
+  document.addEventListener(type, () => Sound.unlock(), { capture: true });
+}
+
+// Clique em qualquer botão da interface
+document.addEventListener("click", (e) => {
+  const button = e.target.closest("button");
+  if (button && !button.disabled && !("noClickSound" in button.dataset)) Sound.play("uiClick");
+});
+
+/* =========================================================
+   BINDINGS (mapeamento de controles)
+   Cada ação tem 2 campos no teclado e 2 no controle, todos remapeáveis
+   e salvos no navegador. Teclado usa KeyboardEvent.code; controle usa
+   "b<N>" (botão N) e "a<N>-" / "a<N>+" (eixo N para um lado), no
+   layout padrão da Gamepad API (Xbox / PlayStation).
+   ========================================================= */
+const ACTIONS = [
+  { id: "left",    label: "Mover para a esquerda" },
+  { id: "right",   label: "Mover para a direita" },
+  { id: "up",      label: "Mover para cima" },
+  { id: "down",    label: "Mover para baixo" },
+  { id: "swap",    label: "Trocar blocos" },
+  { id: "turbo",   label: "Subir a pilha rápido (segurar)" },
+  { id: "pause",   label: "Pausar / continuar" },
+  { id: "restart", label: "Reiniciar partida" },
+];
+const ACTION_IDS = ACTIONS.map(a => a.id);
+const DIRECTIONS = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
+const DEVICES = ["keyboard", "gamepad"];
+const DEFAULT_BINDINGS = {
+  keyboard: {
+    left:    ["ArrowLeft", "KeyA"],
+    right:   ["ArrowRight", "KeyD"],
+    up:      ["ArrowUp", "KeyW"],
+    down:    ["ArrowDown", "KeyS"],
+    swap:    ["Space", "KeyZ"],
+    turbo:   ["KeyF", "KeyQ"],
+    pause:   ["Escape", "KeyP"],
+    restart: ["KeyR", null],
+  },
+  gamepad: {
+    left:    ["b14", "a0-"],   // direcional ← / analógico esquerdo
+    right:   ["b15", "a0+"],
+    up:      ["b12", "a1-"],
+    down:    ["b13", "a1+"],
+    swap:    ["b0", "b1"],     // A / × e B / ○
+    turbo:   ["b4", "b5"],     // LB / L1 e RB / R1
+    pause:   ["b9", null],     // Start / Options
+    restart: ["b8", null],     // Select / Share
+  },
+};
+const BINDINGS_KEY = "panelAttack.bindings";
+let bindings = loadBindings();
+
+function cloneBindings(b) {
+  return JSON.parse(JSON.stringify(b));
+}
+
+function loadBindings() {
+  const result = cloneBindings(DEFAULT_BINDINGS);
+  try {
+    const saved = JSON.parse(localStorage.getItem(BINDINGS_KEY) || "null");
+    if (saved) {
+      for (const device of DEVICES) {
+        for (const action of ACTION_IDS) {
+          const slots = saved[device]?.[action];
+          const valid = Array.isArray(slots) && slots.length === 2
+            && slots.every(c => c === null || typeof c === "string");
+          if (valid) result[device][action] = slots;
+        }
+      }
+    }
+  } catch { /* usa o padrão */ }
+  return result;
+}
+
+function saveBindings() {
+  try { localStorage.setItem(BINDINGS_KEY, JSON.stringify(bindings)); } catch { /* sem armazenamento */ }
+}
+
+/** Ações ligadas a um código (tecla ou botão) num dispositivo. */
+function actionsFor(device, code) {
+  return ACTION_IDS.filter(a => bindings[device][a].includes(code));
+}
+
+const actionLabel = (id) => ACTIONS.find(a => a.id === id).label;
+
+// ---------- Nomes legíveis para teclas e botões ----------
+const KEY_NAMES = {
+  ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓",
+  Space: "Espaço", Escape: "Esc", Enter: "Enter", Tab: "Tab", Backspace: "Backspace",
+  ShiftLeft: "Shift esq.", ShiftRight: "Shift dir.", ControlLeft: "Ctrl esq.", ControlRight: "Ctrl dir.",
+  AltLeft: "Alt esq.", AltRight: "Alt dir.", MetaLeft: "Meta esq.", MetaRight: "Meta dir.",
+  CapsLock: "Caps Lock", Comma: ",", Period: ".", Slash: "/", Semicolon: ";", Quote: "'",
+  BracketLeft: "[", BracketRight: "]", Backslash: "\\", Minus: "-", Equal: "=", Backquote: "`",
+};
+function keyLabel(code) {
+  if (!code) return "—";
+  if (KEY_NAMES[code]) return KEY_NAMES[code];
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+  if (/^Digit\d$/.test(code)) return code.slice(5);
+  if (code.startsWith("Numpad")) return "Num " + code.slice(6);
+  return code;
+}
+
+const PAD_BUTTON_NAMES = [
+  "A / ×", "B / ○", "X / □", "Y / △", "LB / L1", "RB / R1", "LT / L2", "RT / R2",
+  "Select / Share", "Start / Options", "L3", "R3",
+  "Direcional ↑", "Direcional ↓", "Direcional ←", "Direcional →", "Home / PS",
+];
+const PAD_AXIS_NAMES = {
+  "a0-": "Analógico esq. ←", "a0+": "Analógico esq. →", "a1-": "Analógico esq. ↑", "a1+": "Analógico esq. ↓",
+  "a2-": "Analógico dir. ←", "a2+": "Analógico dir. →", "a3-": "Analógico dir. ↑", "a3+": "Analógico dir. ↓",
+};
+function padLabel(code) {
+  if (!code) return "—";
+  if (code[0] === "b") {
+    const i = Number(code.slice(1));
+    return PAD_BUTTON_NAMES[i] || `Botão ${i}`;
+  }
+  return PAD_AXIS_NAMES[code] || `Eixo ${code.slice(1, -1)} ${code.endsWith("-") ? "−" : "+"}`;
+}
+const codeLabel = (device, code) => (device === "keyboard" ? keyLabel(code) : padLabel(code));
+
+/* =========================================================
+   STATE
+   Cada tabuleiro é um objeto independente (jogador e IA usam as mesmas
+   regras). Cada célula da grade é:
+     null                                → vazia
+     { kind: "panel", color, state, … }  → painel com estado PRÓPRIO
+     { kind: "crystal", id }             → parte de um cristal (state.crystals)
+   Como cada painel tem o seu estado, dá para trocar painéis parados
+   enquanto outras colunas caem ou somem.
+   ========================================================= */
+const Phase = { PLAYING: "playing", GAME_OVER: "gameover" };
+const PanelState = {
+  IDLE: "idle",           // parado: pode ser trocado e combinado
+  SWAPPING: "swapping",   // deslizando numa troca
+  HOVER: "hover",         // flutuando um instante antes de cair
+  FALLING: "falling",     // caindo
+  CLEARING: "clearing",   // combinado: piscando e sumindo
+};
+
+// `state` é sempre o tabuleiro "em foco": o loop troca entre jogador e IA
+// (useBoard) e, fora do loop, ele aponta para o tabuleiro do jogador.
+let state = null;
+let boards = [];          // tabuleiros da partida: [jogador] ou [jogador, IA]
+
+const randomSeed = () => (Math.random() * 4294967296) >>> 0;
+
+function makePanel(color, panelState = PanelState.IDLE) {
+  return {
+    kind: "panel",
+    color,
+    state: panelState,
+    timer: 0,        // ms restantes no estado atual (troca, flutuação, sumiço)
+    total: 0,        // duração total do estado atual (para a animação)
+    chain: false,    // caiu porque algo embaixo sumiu: um match dele aumenta a cadeia
+    swapFrom: 0,     // troca: veio da direita (+1) ou da esquerda (-1)
+    fallP: 0,        // queda: fração do caminho até a próxima casa (0..1)
+    landed: false,   // acabou de pousar (som)
+    chainHold: 0,    // ms que a marca de cadeia ainda vale depois de parar
+  };
+}
+
+/**
+ * Cria um tabuleiro. `seed` define as peças iniciais e as linhas novas: no
+ * Versus os dois lados usam a mesma semente (mesmas peças para os dois).
+ * `palette` = elementos em jogo (6 por padrão; 5 no modo Iniciante).
+ */
+function createInitialState({ seed = randomSeed(), isAI = false, characterId = null, name = "",
+                              palette = paletteFor(ELEMENTS_COUNT_DEFAULT) } = {}) {
+  const rowRng = mulberry32(seed);                    // peças iniciais + linhas novas
+  const rng = mulberry32((seed ^ 0x9e3779b9) >>> 0);  // lógica: correções, cristais
+  return {
+    seed,
+    palette,
+    grid: createStartingGrid(rowRng, palette),
+    rowRng,
+    rng,
+    isAI,
+    characterId,
+    name,
+    opponent: null,         // tabuleiro adversário (Versus)
+    ai: isAI ? createAI() : null,
+    crystals: new Map(),    // id → { id, element, x0, y0, w, h, fallP, breaking }
+    nextCrystalId: 1,
+    attack: null,           // cristais sendo montados: { combos: [], chain, timer }
+    incoming: [],           // fila de cristais a caminho: { element, w, h, timer }
+    particles: [],          // efeitos visuais (Math.random)
+    nextRow: createNextRow(rowRng, palette), // linha "nascendo" embaixo (prévia)
+    riseProgress: 0,        // 0..1: quanto da próxima linha já apareceu
+    stopTime: 0,            // ms de pausa da pilha que ainda faltam (combo/cadeia)
+    grace: null,            // ms de graça no topo que ainda faltam (null = fora de perigo)
+    chain: 0,               // cadeia atual (0 = nada acontecendo, 1 = primeiro clear, 2+ = xN)
+    elapsedMs: 0,           // tempo de partida (para quando pausado)
+    clock: 0,               // relógio das animações; também para no pause
+    paused: false,
+    speedLevel: 0,          // minuto atual (para disparar avisos)
+    cursor: { x: 3, y: CONFIG.ROWS - 3 }, // x = coluna da esquerda do cursor
+    score: 0,
+    bestChain: 0,
+    phase: Phase.PLAYING,
+    message: "",
+    messageTimer: 0,
+    banner: "",             // aviso grande sobre o tabuleiro (velocidade)
+    bannerTimer: 0,
+  };
+}
+
+/* =========================================================
+   GRID
+   grid[y][x], y = 0 é o topo, y = ROWS-1 é o fundo.
+   Todo sorteio de painel usa o gerador COM SEMENTE do tabuleiro.
+   ========================================================= */
+function createEmptyGrid() {
+  return Array.from({ length: CONFIG.ROWS }, () => new Array(CONFIG.COLS).fill(EMPTY));
+}
+
+/** Elementos em jogo: os 6, ou 5 (sem BEGINNER_LEFT_OUT_ELEMENT) no Iniciante. */
+function paletteFor(count) {
+  const all = Array.from({ length: NUM_COLORS }, (_, i) => i + 1);
+  return count >= NUM_COLORS ? all : all.filter(e => e !== BEGINNER_LEFT_OUT_ELEMENT).slice(0, count);
+}
+
+function randInt(min, max, rng) { // inclusivo
+  return min + Math.floor(rng() * (max - min + 1));
+}
+
+function randomColorExcept(forbidden, rng, palette) {
+  let options = palette.filter(c => !forbidden.has(c));
+  if (!options.length) options = palette;
+  return options[randInt(0, options.length - 1, rng)];
+}
+
+const isPanel = (c) => c !== null && c !== undefined && c.kind === "panel";
+const isCrystalCell = (c) => c !== null && c !== undefined && c.kind === "crystal";
+/** Cor do painel na casa (0 se vazia ou cristal). */
+const colorAt = (grid, x, y) => (isPanel(grid[y][x]) ? grid[y][x].color : 0);
+
+/**
+ * Gera a grade inicial: colunas com alturas aleatórias preenchidas de
+ * baixo para cima, escolhendo cores que não criam matches iniciais.
+ */
+function createStartingGrid(rng, palette) {
+  const grid = createEmptyGrid();
+  for (let x = 0; x < CONFIG.COLS; x++) {
+    const height = randInt(CONFIG.START_MIN_HEIGHT, CONFIG.START_MAX_HEIGHT, rng);
+    for (let i = 0; i < height; i++) {
+      const y = CONFIG.ROWS - 1 - i;
+      grid[y][x] = makePanel(pickSafeColor(grid, x, y, rng, palette));
+    }
+  }
+  return grid;
+}
+
+/** Cor que não forma 3 em linha com os vizinhos já colocados (esquerda e abaixo). */
+function pickSafeColor(grid, x, y, rng, palette) {
+  const forbidden = new Set();
+  const c1 = x >= 2 ? colorAt(grid, x - 1, y) : 0;
+  if (c1 && c1 === colorAt(grid, x - 2, y)) forbidden.add(c1);
+  const c2 = y <= CONFIG.ROWS - 3 ? colorAt(grid, x, y + 1) : 0;
+  if (c2 && c2 === colorAt(grid, x, y + 2)) forbidden.add(c2);
+  return randomColorExcept(forbidden, rng, palette);
+}
+
+/* =========================================================
+   RISING STACK (geração das linhas)
+   A próxima linha é sorteada só com a regra horizontal, então a
+   sequência depende apenas da semente (igual nos dois lados do Versus).
+   Na hora em que entra, só as casas que criariam match são re-sorteadas.
+   ========================================================= */
+
+/** Cores que, colocadas em row[x], formariam um match. `row` = lista de cores. */
+function forbiddenForNewRow(row, x, grid) {
+  const forbidden = new Set();
+  const at = (i) => (i >= 0 && i < CONFIG.COLS ? row[i] : 0);
+  if (at(x - 1) && at(x - 1) === at(x - 2)) forbidden.add(at(x - 1));
+  if (at(x + 1) && at(x + 1) === at(x + 2)) forbidden.add(at(x + 1));
+  if (at(x - 1) && at(x - 1) === at(x + 1)) forbidden.add(at(x - 1));
+  if (grid) {
+    const b1 = colorAt(grid, x, CONFIG.ROWS - 1), b2 = colorAt(grid, x, CONFIG.ROWS - 2);
+    if (b1 && b1 === b2) forbidden.add(b1);
+  }
+  return forbidden;
+}
+
+function createNextRow(rng, palette) {
+  const row = new Array(CONFIG.COLS).fill(0);
+  for (let x = 0; x < CONFIG.COLS; x++) row[x] = randomColorExcept(forbiddenForNewRow(row, x, null), rng, palette);
+  return row;
+}
+
+/** Re-sorteia apenas as casas da prévia que agora criariam match. */
+function fixNextRow(row, grid, rng, palette) {
+  for (let x = 0; x < CONFIG.COLS; x++) {
+    const forbidden = forbiddenForNewRow(row, x, grid);
+    if (forbidden.has(row[x])) row[x] = randomColorExcept(forbidden, rng, palette);
+  }
+}
+
+/**
+ * Intervalo normal (ms) para subir uma linha, em função do tempo de partida.
+ * Curva exponencial suave até os 5 min, depois salto + queda mais íngreme.
+ */
+function riseIntervalMs(t) {
+  const { RISE_AT_FRENZY_MS, FRENZY_TIME_MS, FRENZY_MULT, FRENZY_DECAY_FACTOR, RISE_MIN_MS } = CONFIG;
+  const start = SPEED_PRESETS[settings.speed];
+  const ratio = RISE_AT_FRENZY_MS / start;
+  let ms;
+  if (t < FRENZY_TIME_MS) {
+    ms = start * Math.pow(ratio, t / FRENZY_TIME_MS);
+  } else {
+    const after = (t - FRENZY_TIME_MS) / FRENZY_TIME_MS;
+    ms = RISE_AT_FRENZY_MS * FRENZY_MULT * Math.pow(ratio, after * FRENZY_DECAY_FACTOR);
+  }
+  return Math.max(RISE_MIN_MS, ms);
+}
+
+/** Turbo ativo: segurado pelo jogador, fora do tempo de graça e do pause. */
+function isTurbo() {
+  const held = state.isAI ? !!(state.ai && state.ai.turbo) : input.turbo;
+  return held && !state.paused && state.grace === null;
+}
+
+/** Intervalo efetivo agora: o normal da partida, ou o turbo se for mais rápido. */
+function currentRiseIntervalMs() {
+  const normal = riseIntervalMs(state.elapsedMs);
+  return isTurbo() ? Math.min(normal, CONFIG.TURBO_RISE_MS) : normal;
+}
+
+function isFrenzy() {
+  return state.elapsedMs >= CONFIG.FRENZY_TIME_MS;
+}
+
+/** Algo na linha do topo (ou um cristal ainda entrando por cima)? */
+function topOccupied() {
+  if (state.grid[0].some(c => c !== EMPTY)) return true;
+  for (const c of state.crystals.values()) if (c.y0 < 0) return true;
+  return false;
+}
+
+function isInDanger() {
+  return topOccupied() || state.grid[1].some(c => c !== EMPTY);
+}
+
+/* =========================================================
+   SCREENS / MENU
+   Três telas: menu principal, opções e jogo.
+   ========================================================= */
+const Screen = {
+  MENU: "menu", SINGLE: "single", VERSUS: "versus", CREATE: "create", MAP: "map",
+  OPTIONS: "options", CONTROLS: "controls", GAME: "game",
+};
+let currentScreen = Screen.MENU;
+let optionsReturn = Screen.MENU; // para onde "Voltar" leva a partir das Opções
+
+const $ = (id) => document.getElementById(id);
+const screens = {
+  [Screen.MENU]: $("menuScreen"),
+  [Screen.OPTIONS]: $("optionsScreen"),
+  [Screen.CONTROLS]: $("controlsScreen"),
+  [Screen.SINGLE]: $("singleScreen"),
+  [Screen.VERSUS]: $("versusScreen"),
+  [Screen.CREATE]: $("createScreen"),
+  [Screen.MAP]: $("mapScreen"),
+  [Screen.GAME]: $("gameScreen"),
+};
+
+function showScreen(name) {
+  if (capture) cancelCapture(false);
+  currentScreen = name;
+  for (const [key, el] of Object.entries(screens)) el.hidden = key !== name;
+  input.keysDown.clear();
+  input.padTurbo = false;
+  input.turbo = false;
+  if (name === Screen.MENU) $("btnSingle").focus();
+  if (name === Screen.SINGLE) $("btnCampaign").focus();
+  if (name === Screen.VERSUS) {
+    for (const b of $("aiLevelList").querySelectorAll("button")) {
+      b.setAttribute("aria-pressed", String(b.dataset.level === settings.aiLevel && !b.dataset.beginner));
+    }
+    $("aiLevelList").querySelector(`[data-level="${settings.aiLevel}"]:not([data-beginner])`).focus();
+  }
+  if (name === Screen.MAP) {
+    renderMap();
+    screens[Screen.MAP].querySelector(".biome").focus();
+  }
+  if (name === Screen.OPTIONS) $("optMusicOn").focus();
+  if (name === Screen.CONTROLS) {
+    setBindStatus(BIND_STATUS_IDLE);
+    renderBindings();
+    refreshPadStatus();
+    screens[Screen.CONTROLS].querySelector(".bind-slot").focus();
+  }
+  if (name === Screen.GAME) {
+    renderHelp();
+    canvas.focus();
+    if (state && state.paused) focusOverlayForPad(ui.pauseOverlay);
+  }
+}
+
+// Partida atual:
+//   endless  → um tabuleiro, solo
+//   campaign → bioma do mapa: Versus contra a IA com um personagem sorteado
+//   versus   → Versus vs IA pelo menu principal
+// beginner: modo Iniciante (5 elementos) — só existe no Endless e no Versus vs IA Fácil
+let match = { mode: "endless", biome: null, versus: false, aiLevel: "normal", opponentId: null, result: null, beginner: false };
+
+/** Adversário sorteado entre os 16 personagens, menos o do jogador. */
+function randomOpponentId() {
+  const ids = CHARACTERS.map(c => c.id).filter(id => !hero || id !== hero.id);
+  return ids[Math.floor(Math.random() * ids.length)];
+}
+
+function startEndless(beginner = false) {
+  match = { mode: "endless", biome: null, versus: false, aiLevel: settings.aiLevel, opponentId: null, result: null, beginner };
+  startMatch();
+}
+
+function startCampaignMatch(biome) {
+  match = { mode: "campaign", biome, versus: true, aiLevel: settings.aiLevel, opponentId: randomOpponentId(), result: null, beginner: false };
+  startMatch();
+}
+
+function startVersus(level, beginner = false) {
+  settings.aiLevel = level;
+  saveSettings();
+  match = { mode: "versus", biome: null, versus: true, aiLevel: level, opponentId: randomOpponentId(), result: null,
+            beginner: beginner && level === "easy" };
+  startMatch();
+}
+
+/** Elementos da partida: 6 sempre; 5 só no modo Iniciante. */
+function matchPalette() {
+  return paletteFor(match.beginner ? ELEMENTS_COUNT_BEGINNER : ELEMENTS_COUNT_DEFAULT);
+}
+
+function startMatch() {
+  const campaign = match.mode === "campaign";
+  const levelLabel = AI_LEVELS[match.aiLevel].label;
+  $("matchTitle").textContent = campaign ? match.biome.name.toUpperCase()
+    : match.mode === "versus" ? "VERSUS" : "ENDLESS";
+  const beginner = match.beginner ? " · Iniciante (5 elementos)" : "";
+  $("matchSub").hidden = !match.versus && !match.beginner;
+  $("matchSub").textContent = (campaign ? `${heroName()} · Campanha · IA ${levelLabel}`
+    : match.versus ? `vs ${CHARACTER_NAMES[match.opponentId - 1]} · IA ${levelLabel}` : "Endless").concat(beginner);
+  document.querySelectorAll(".menu-target").forEach(el => {
+    el.textContent = campaign ? "Voltar ao Mapa" : "Voltar ao Menu";
+  });
+  $("menuBtn").textContent = campaign ? "Mapa" : "Menu";
+  restart();
+  showScreen(Screen.GAME);
+}
+
+/** Sair da partida: Campanha → mapa · Versus → escolha de dificuldade · Endless → Single Player. */
+function goToMenu() {
+  optionsReturn = Screen.MENU;
+  showScreen(match.mode === "campaign" ? Screen.MAP : match.mode === "versus" ? Screen.VERSUS : Screen.SINGLE);
+}
+
+/** A partida acabou? (no Versus, basta um dos tabuleiros estourar) */
+function matchOver() {
+  return boards.some(b => b.phase === Phase.GAME_OVER);
+}
+
+function setPausedAll(paused) {
+  for (const b of boards) b.paused = paused;
+}
+
+function openOptions(from) {
+  optionsReturn = from;
+  showScreen(Screen.OPTIONS);
+}
+
+function closeOptions() {
+  showScreen(optionsReturn);
+}
+
+/** Botão "voltar" (Esc nos menus / B no controle). */
+function goBack() {
+  if (currentScreen === Screen.CONTROLS) showScreen(Screen.OPTIONS);
+  else if (currentScreen === Screen.OPTIONS) closeOptions();
+  else if (currentScreen === Screen.SINGLE) showScreen(Screen.MENU);
+  else if (currentScreen === Screen.VERSUS) showScreen(Screen.MENU);
+  else if (currentScreen === Screen.CREATE) createBack();
+  else if (currentScreen === Screen.MAP) showScreen(Screen.SINGLE);
+}
+
+/** Liga um grupo de botões segmentados a uma chave de `settings`. */
+function bindSegmented(groupId, key) {
+  const buttons = [...$(groupId).querySelectorAll("button")];
+  const sync = () => buttons.forEach(b => b.setAttribute("aria-pressed", String(b.dataset.value === settings[key])));
+  buttons.forEach(b => b.addEventListener("click", () => {
+    settings[key] = b.dataset.value;
+    saveSettings();
+    sync();
+  }));
+  sync();
+}
+
+/** Botão liga/desliga ligado a uma chave booleana de `settings`. */
+function bindToggle(id, key, onText, offText) {
+  const b = $(id);
+  const sync = () => {
+    b.setAttribute("aria-pressed", String(settings[key]));
+    b.textContent = settings[key] ? onText : offText;
+  };
+  b.addEventListener("click", () => {
+    settings[key] = !settings[key];
+    saveSettings();
+    sync();
+  });
+  sync();
+}
+
+/** Slider 0–100 ligado a uma chave de `settings`, com o valor em % ao lado. */
+function bindSlider(id, key) {
+  const el = $(id), out = $(id + "Out");
+  el.value = settings[key];
+  out.textContent = settings[key] + "%";
+  el.addEventListener("input", () => {
+    settings[key] = Number(el.value);
+    out.textContent = el.value + "%";
+  });
+  el.addEventListener("change", () => {
+    saveSettings();
+    if (key === "sfxVolume") Sound.play("uiClick"); // prévia do novo volume
+  });
+}
+
+$("btnSingle").addEventListener("click", () => showScreen(Screen.SINGLE));
+$("btnVersus").addEventListener("click", () => showScreen(Screen.VERSUS));
+$("btnVersusBack").addEventListener("click", () => showScreen(Screen.MENU));
+$("aiLevelList").querySelectorAll("button").forEach(b => {
+  b.addEventListener("click", () => startVersus(b.dataset.level, !!b.dataset.beginner));
+});
+$("btnSingleBack").addEventListener("click", () => showScreen(Screen.MENU));
+$("btnEndless").addEventListener("click", () => startEndless(false));
+$("btnEndlessBeginner").addEventListener("click", () => startEndless(true));
+$("btnCampaign").addEventListener("click", openCampaign);
+$("btnCreateBack").addEventListener("click", createBack);
+$("btnNewHero").addEventListener("click", startCreation);
+$("btnMapBack").addEventListener("click", () => showScreen(Screen.SINGLE));
+$("btnOptions").addEventListener("click", () => openOptions(Screen.MENU));
+$("btnOptionsBack").addEventListener("click", closeOptions);
+$("btnControls").addEventListener("click", () => showScreen(Screen.CONTROLS));
+$("btnControlsBack").addEventListener("click", () => showScreen(Screen.OPTIONS));
+$("btnBindReset").addEventListener("click", resetBindings);
+bindSegmented("optSpeed", "speed");
+bindSegmented("optAnim", "anim");
+bindToggle("optMusicOn", "musicOn", "Ligada", "Desligada");
+bindToggle("optSfxOn", "sfxOn", "Ligados", "Desligados");
+bindSlider("optMusicVolume", "musicVolume");
+bindSlider("optSfxVolume", "sfxVolume");
+
+// Botões dentro do jogo devolvem o foco ao tabuleiro (para o teclado continuar valendo)
+function gameButton(id, fn) {
+  $(id).addEventListener("click", (e) => {
+    fn();
+    e.currentTarget.blur();
+    if (currentScreen === Screen.GAME) canvas.focus();
+  });
+}
+gameButton("restartBtn", () => restart());
+gameButton("menuBtn", goToMenu);
+gameButton("btnResume", () => togglePause());
+gameButton("btnPauseRestart", () => restart());
+gameButton("btnPauseOptions", () => openOptions(Screen.GAME));
+gameButton("btnPauseMenu", goToMenu);
+gameButton("btnPlayAgain", () => restart());
+gameButton("btnGameOverMenu", goToMenu);
+
+// ---------- Aviso rápido (toast) ----------
+let toastTimer = 0;
+function showToast(text) {
+  const t = $("toast");
+  t.textContent = text;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+}
+
+/* =========================================================
+   CAMPAIGN (criação de personagem + mapa)
+   Os sprites ficam em characters/char_01.png … char_16.png (recortados
+   da folha de referência por characters/extract_sprites.py). Se um
+   arquivo não carregar, aparece um marcador numerado no lugar.
+   ========================================================= */
+const CHARACTER_DIR = "characters/";
+const CHARACTERS = Array.from({ length: 16 }, (_, i) => ({
+  id: i + 1,
+  gender: i < 8 ? "f" : "m",            // fileira de cima: 1–8 · fileira de baixo: 9–16
+  sprite: `char_${String(i + 1).padStart(2, "0")}.png`,
+}));
+const DEFAULT_HERO_NAME = "Humano";
+const HERO_KEY = "panelAttack.hero";
+
+const BIOMES = [
+  { id: "earth",  name: "Terra",    color: "#c4733a",
+    icon: '<path d="M3 17.5 6 10l5-4.5 6.5 2.5 3.5 7-3 4H6.5z" fill="currentColor"/><path d="M10 9.5 12 13l-1.5 3" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="1.4" stroke-linecap="round"/>' },
+  { id: "forest", name: "Floresta", color: "#2f9e46",
+    icon: '<path d="M12 2.5 17 9h-2.6l3.8 5.2h-3.3L19 20H5l4.1-5.8H5.8L9.6 9H7z" fill="currentColor"/><rect x="10.9" y="19.5" width="2.2" height="3" fill="currentColor"/>' },
+  { id: "metal",  name: "Metal",    color: "#7d8a9c",
+    icon: '<path d="M7 11.5h10l1.5-3.5h-13z" fill="currentColor"/><path d="M2 19.5h9.2l1.2-3.6H3.2zM12.8 19.5H22l-1.2-3.6h-6.8z" fill="currentColor"/><path d="M6.6 12.6h10.8M2.6 15h9.4M13.2 15h9.2" stroke="currentColor" stroke-width="1.6"/>' },
+  { id: "fire",   name: "Fogo",     color: "#e8501f",
+    icon: '<path d="M12 2c1 4 6.2 6.4 6.2 12.2a6.2 6.2 0 0 1-12.4 0c0-3 1.5-5.1 3-7 .3 2 1.2 3.3 2.3 3.6C10.9 7 11 4.6 12 2z" fill="currentColor"/>' },
+  { id: "water",  name: "Água",     color: "#1f7fe0",
+    icon: '<path d="M12 2.5C9 7.5 5.5 11 5.5 15a6.5 6.5 0 0 0 13 0c0-4-3.5-7.5-6.5-12.5z" fill="currentColor"/><path d="M9 15.2a3 3 0 0 0 2.6 3" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.5" stroke-linecap="round"/>' },
+  { id: "air",    name: "Ar",       color: "#2fb5d9",
+    icon: '<path d="M3 8h10a3 3 0 1 0-3-3M3 13h15a3 3 0 1 1-3 3M3 18h7" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/>' },
+];
+/**
+ * Subbiomas: fora do mapa por enquanto. O Vitalis volta no futuro como
+ * evolução da Floresta; os dados ficam guardados aqui.
+ */
+const SUB_BIOMES = [
+  { id: "fungi",  name: "Vitalis", color: "#8e4fd8", parent: "forest", // antigo "Orgânico (Fungos)"
+    icon: '<path d="M2.5 12.2a9.5 8.4 0 0 1 19 0z" fill="currentColor"/><path d="M9.4 12.2h5.2l.9 7.8a1 1 0 0 1-1 1.1H9.5a1 1 0 0 1-1-1.1z" fill="currentColor"/><circle cx="8" cy="8.6" r="1.4" fill="rgba(0,0,0,.25)"/><circle cx="14.6" cy="7" r="1.1" fill="rgba(0,0,0,.25)"/>' },
+];
+/** Progresso salvo do Vitalis passa para o bioma de Água. */
+const BIOME_ID_MIGRATIONS = { fungi: "water" };
+const MAP_RADIUS = 36; // distância dos biomas ao centro, em % do mapa
+
+let hero = loadHero();                       // personagem salvo (ou null)
+const draft = { gender: null, id: null };    // escolhas durante a criação
+let createStep = "gender";
+
+function loadHero() {
+  try {
+    const h = JSON.parse(localStorage.getItem(HERO_KEY) || "null");
+    if (h && CHARACTERS.some(c => c.id === h.id) && typeof h.name === "string") return migrateHero(h);
+  } catch { /* sem personagem salvo */ }
+  return null;
+}
+
+/**
+ * Saves antigos: ids de bioma que saíram do mapa (Vitalis → Água) e o elemento
+ * Orgânico (→ Metal) são trocados onde aparecerem, em chaves ou valores.
+ * Se os dois existirem, fica o maior progresso.
+ */
+function migrateHero(h) {
+  const MAP = { ...BIOME_ID_MIGRATIONS, organic: "metal" };
+  const better = (a, b) => (typeof a === "number" && typeof b === "number") ? Math.max(a, b) : (a ?? b);
+  const walk = (v) => {
+    if (Array.isArray(v)) return [...new Set(v.map(x => (typeof x === "string" && MAP[x]) || walk(x)))];
+    if (v && typeof v === "object") {
+      const out = {};
+      for (const [k, x] of Object.entries(v)) {
+        const key = MAP[k] || k;
+        out[key] = key in out ? better(out[key], walk(x)) : walk(x);
+      }
+      return out;
+    }
+    return v;
+  };
+  const { name, ...rest } = h; // o nome é texto livre: não mexe
+  return { ...walk(rest), name };
+}
+
+function saveHero() {
+  try { localStorage.setItem(HERO_KEY, JSON.stringify(hero)); } catch { /* sem armazenamento */ }
+}
+
+/** Arte de um personagem: o sprite, ou um marcador numerado se o arquivo faltar. */
+function characterArt(id) {
+  const ch = CHARACTERS.find(c => c.id === id);
+  const img = document.createElement("img");
+  img.className = "char-art";
+  img.alt = "";
+  img.src = CHARACTER_DIR + ch.sprite;
+  img.addEventListener("error", () => {
+    const ph = document.createElement("div");
+    ph.className = "char-placeholder";
+    ph.textContent = id;
+    img.replaceWith(ph);
+  }, { once: true });
+  return img;
+}
+
+/** Campanha no menu: com personagem salvo vai direto ao mapa; senão, cria um. */
+function openCampaign() {
+  if (hero) showScreen(Screen.MAP);
+  else startCreation();
+}
+
+function startCreation() {
+  draft.gender = null;
+  draft.id = null;
+  showScreen(Screen.CREATE);
+  showCreateStep("gender");
+}
+
+function showCreateStep(step) {
+  createStep = step;
+  $("stepGender").hidden = step !== "gender";
+  $("stepCharacter").hidden = step !== "character";
+  $("stepName").hidden = step !== "name";
+  if (step === "gender") {
+    screens[Screen.CREATE].querySelector(`.gender-btn[data-gender="${draft.gender || "m"}"]`).focus();
+  } else if (step === "character") {
+    renderCharacterGrid();
+    const sel = $("charGrid").querySelector('[aria-pressed="true"]') || $("charGrid").querySelector(".char-card");
+    sel.focus();
+  } else {
+    $("namePreview").replaceChildren(characterArt(draft.id));
+    $("heroName").value = hero && hero.id === draft.id ? hero.name : "";
+    $("heroName").focus();
+  }
+}
+
+function renderCharacterGrid() {
+  const grid = $("charGrid");
+  grid.replaceChildren();
+  for (const ch of CHARACTERS.filter(c => c.gender === draft.gender)) {
+    const b = document.createElement("button");
+    b.className = "char-card";
+    b.setAttribute("aria-label", `Personagem ${ch.id}`);
+    b.setAttribute("aria-pressed", String(draft.id === ch.id));
+    const num = document.createElement("span");
+    num.className = "char-num";
+    num.textContent = ch.id;
+    b.append(num, characterArt(ch.id));
+    b.addEventListener("click", () => {
+      draft.id = ch.id;
+      showCreateStep("name");
+    });
+    grid.appendChild(b);
+  }
+}
+
+/** Voltar dentro da criação: nome → personagem → gênero → Single Player. */
+function createBack() {
+  if (createStep === "name") showCreateStep("character");
+  else if (createStep === "character") showCreateStep("gender");
+  else showScreen(Screen.SINGLE);
+}
+
+document.querySelectorAll(".gender-btn").forEach(b => b.addEventListener("click", () => {
+  if (draft.gender !== b.dataset.gender) draft.id = null;
+  draft.gender = b.dataset.gender;
+  showCreateStep("character");
+}));
+
+$("nameForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = $("heroName").value.replace(/\s+/g, " ").trim() || DEFAULT_HERO_NAME;
+  hero = { gender: draft.gender, id: draft.id, name };
+  saveHero();
+  Sound.play("uiClick");
+  showScreen(Screen.MAP);
+});
+
+/** Monta os biomas em volta do centro (uma vez) e as linhas retas até eles. */
+function buildMap() {
+  const mapEl = $("campaignMap");
+  const svgNS = "http://www.w3.org/2000/svg";
+  BIOMES.forEach((biome, i) => {
+    const angle = (-90 + i * 60) * Math.PI / 180;
+    const x = 50 + MAP_RADIUS * Math.cos(angle);
+    const y = 50 + MAP_RADIUS * Math.sin(angle);
+    const line = document.createElementNS(svgNS, "line");
+    line.setAttribute("x1", 50); line.setAttribute("y1", 50);
+    line.setAttribute("x2", x); line.setAttribute("y2", y);
+    $("mapLines").appendChild(line);
+
+    const b = document.createElement("button");
+    b.className = "biome";
+    b.style.left = x + "%";
+    b.style.top = y + "%";
+    b.style.setProperty("--c", biome.color);
+    b.setAttribute("aria-label", `${i + 1}. ${biome.name}${biome.sub ? ` (${biome.sub})` : ""}`);
+    b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${biome.icon}</svg>`
+      + `<span>${biome.name}</span>${biome.sub ? `<small>(${biome.sub})</small>` : ""}`;
+    b.addEventListener("click", () => startCampaignMatch(biome));
+    mapEl.appendChild(b);
+  });
+}
+
+function renderMap() {
+  const h = hero || { id: null, name: DEFAULT_HERO_NAME };
+  $("mapHeroName").textContent = h.name;
+  $("mapHeroArt").replaceChildren(...(h.id ? [characterArt(h.id)] : []));
+}
+
+/* =========================================================
+   INPUT
+   Teclado e controle funcionam ao mesmo tempo. Os dois são traduzidos
+   para as mesmas ações (ACTIONS) usando o mapeamento em `bindings`.
+   ========================================================= */
+const input = {
+  keysDown: new Set(), // teclas físicas seguradas agora (para o turbo)
+  padTurbo: false,     // turbo segurado no controle
+  turbo: false,        // turbo efetivo (teclado OU controle), atualizado a cada frame
+  lastDevice: "keyboard",
+};
+
+/** Executa uma ação de jogo (vinda do teclado ou do controle). */
+function runAction(action, repeat) {
+  if (action === "pause") { if (!repeat) togglePause(); return; }
+  if (action === "restart") { if (!repeat) restart(); return; }
+  if (state.paused) return;           // sem mover/trocar durante o pause
+  if (DIRECTIONS[action]) moveCursor(...DIRECTIONS[action]);
+  else if (action === "swap" && !repeat) trySwap();
+}
+
+document.addEventListener("keydown", (e) => {
+  input.lastDevice = "keyboard";
+  if (capture) { handleCaptureKey(e); return; }
+  // Digitando o nome: as teclas são texto (Enter confirma pelo formulário, Esc volta)
+  if (e.target instanceof HTMLInputElement && e.target.type === "text") {
+    if (e.code === "Escape") {
+      e.preventDefault();
+      goBack();
+    }
+    return;
+  }
+  input.keysDown.add(e.code);
+  if (currentScreen === Screen.GAME) handleGameKey(e);
+  else handleMenuKey(e);
+});
+
+document.addEventListener("keyup", (e) => input.keysDown.delete(e.code));
+
+function handleGameKey(e) {
+  const actions = actionsFor("keyboard", e.code);
+
+  // Fim de partida: Enter (ou a tecla de trocar/reiniciar) joga de novo; Esc/M (ou pausar) volta
+  if (matchOver()) {
+    let fn = null;
+    if (e.code === "Enter" || actions.includes("swap") || actions.includes("restart")) fn = restart;
+    else if (e.code === "Escape" || e.code === "KeyM" || actions.includes("pause")) fn = goToMenu;
+    if (fn) {
+      e.preventDefault();
+      if (!e.repeat) fn();
+    }
+    return;
+  }
+
+  // Pausado: atalhos fixos M (menu) e O (opções); setas percorrem os botões do pause
+  if (state.paused && !actions.includes("pause") && !actions.includes("restart")) {
+    const fixed = { KeyM: goToMenu, KeyO: () => openOptions(Screen.GAME) }[e.code];
+    if (fixed) {
+      e.preventDefault();
+      if (!e.repeat) fixed();
+      return;
+    }
+    const dir = menuDirection(e.code);
+    if (dir) {
+      e.preventDefault();
+      uiNavigate(dir);
+    }
+    return; // Enter/Espaço no botão focado usam o clique nativo
+  }
+
+  if (!actions.length) return;
+  e.preventDefault(); // evita rolagem da página com setas/espaço
+  for (const a of actions) {
+    if (a !== "turbo") runAction(a, e.repeat); // turbo é lido como "segurado" a cada frame
+  }
+}
+
+// ---------- Navegação nos menus (teclado e controle) ----------
+const MENU_ARROWS = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" };
+
+/** Setas sempre navegam; as teclas de movimento configuradas também. */
+function menuDirection(code) {
+  return MENU_ARROWS[code] || Object.keys(DIRECTIONS).find(a => bindings.keyboard[a].includes(code)) || null;
+}
+
+function handleMenuKey(e) {
+  const dir = menuDirection(e.code);
+  if (dir) {
+    e.preventDefault();
+    uiNavigate(dir);
+  } else if (e.code === "Escape") {
+    e.preventDefault();
+    goBack();
+  }
+  // Enter/Espaço no item focado usam o clique nativo
+}
+
+/** Onde procurar itens navegáveis agora (tela atual ou janela de pause/game over). */
+function uiRoot() {
+  if (currentScreen !== Screen.GAME) return screens[currentScreen];
+  if (!ui.gameOverOverlay.hidden) return ui.gameOverOverlay;
+  if (!ui.pauseOverlay.hidden) return ui.pauseOverlay;
+  return null;
+}
+
+function uiFocusables(root) {
+  return [...root.querySelectorAll('button:not(:disabled), input[type="range"], input[type="text"]')]
+    .filter(el => el.offsetParent !== null);
+}
+
+/** Move o foco (↑/← volta, ↓/→ avança); em sliders, ←/→ ajustam o valor. */
+function uiNavigate(dir) {
+  const root = uiRoot();
+  if (!root) return;
+  const items = uiFocusables(root);
+  if (!items.length) return;
+  const active = document.activeElement;
+  if (active && active.type === "range" && root.contains(active) && (dir === "left" || dir === "right")) {
+    active.value = Number(active.value) + (dir === "right" ? 1 : -1) * Number(active.step || 1);
+    active.dispatchEvent(new Event("input", { bubbles: true }));
+    active.dispatchEvent(new Event("change", { bubbles: true }));
+    return;
+  }
+  const i = items.indexOf(active);
+  const step = dir === "down" || dir === "right" ? 1 : -1;
+  const next = i === -1 ? items[0] : items[(i + step + items.length) % items.length];
+  next.focus();
+  Sound.play("cursor");
+}
+
+/** Confirmar (A no controle): clica no item focado, ou foca o primeiro. */
+function uiConfirm() {
+  const root = uiRoot();
+  if (!root) return;
+  const active = document.activeElement;
+  if (active && root.contains(active) && active.tagName === "BUTTON") active.click();
+  else uiFocusables(root)[0]?.focus();
+}
+
+/** Quando o pause/game over aparece por ação do controle, já foca o primeiro botão. */
+function focusOverlayForPad(root) {
+  if (input.lastDevice === "gamepad") uiFocusables(root)[0]?.focus();
+}
+
+// Se a janela perde o foco, os keyup podem nunca chegar: solta tudo.
+window.addEventListener("blur", () => {
+  input.keysDown.clear();
+  input.padTurbo = false;
+});
+
+// Trocar de aba pausa o jogo automaticamente.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && currentScreen === Screen.GAME && state && !matchOver()) {
+    setPausedAll(true);
+  }
+});
+
+/* =========================================================
+   GAMEPAD
+   Lido a cada frame (Gamepad API). Botões fixos de interface:
+   A confirma, B volta, Start confirma nos menus. Direções repetem
+   sozinhas enquanto seguradas, como o teclado.
+   ========================================================= */
+const PAD_AXIS_THRESHOLD = 0.5;
+const PAD_REPEAT_DELAY_MS = 220;
+const PAD_REPEAT_RATE_MS = 75;
+const PAD_CONFIRM = "b0";
+const PAD_BACK = "b1";
+const PAD_START = "b9";
+const pad = { prev: new Set(), repeatAt: {} };
+
+function connectedPads() {
+  try {
+    return [...(navigator.getGamepads ? navigator.getGamepads() : [])].filter(Boolean);
+  } catch {
+    return []; // a página pode não ter permissão para usar controles
+  }
+}
+
+/** Códigos ativos agora em todos os controles: "b0", "a1-" etc. */
+function readPadCodes() {
+  const codes = new Set();
+  for (const gp of connectedPads()) {
+    gp.buttons.forEach((b, i) => { if (b.pressed || b.value > 0.5) codes.add("b" + i); });
+    gp.axes.forEach((v, i) => {
+      if (v <= -PAD_AXIS_THRESHOLD) codes.add(`a${i}-`);
+      else if (v >= PAD_AXIS_THRESHOLD) codes.add(`a${i}+`);
+    });
+  }
+  return codes;
+}
+
+function pollGamepad(now) {
+  const codes = readPadCodes();
+  const prev = pad.prev;
+  pad.prev = codes;
+  const fresh = new Set([...codes].filter(c => !prev.has(c))); // apertados neste frame
+  if (fresh.size) input.lastDevice = "gamepad";
+
+  // Remapeamento esperando um botão
+  if (capture) {
+    if (capture.device === "gamepad" && fresh.size) finishCapture([...fresh][0]);
+    else if (capture.device === "keyboard" && fresh.has(PAD_BACK)) cancelCapture();
+    return;
+  }
+
+  // Ações seguradas e recém-apertadas, conforme o mapeamento
+  const held = new Set(), pressed = new Set();
+  for (const a of ACTION_IDS) {
+    for (const c of bindings.gamepad[a]) {
+      if (c && codes.has(c)) {
+        held.add(a);
+        if (!prev.has(c)) pressed.add(a);
+      }
+    }
+  }
+  input.padTurbo = held.has("turbo");
+
+  // Repetição automática das direções
+  const fire = new Set([...pressed].filter(a => !DIRECTIONS[a] && a !== "turbo"));
+  for (const a of Object.keys(DIRECTIONS)) {
+    if (pressed.has(a)) {
+      fire.add(a);
+      pad.repeatAt[a] = now + PAD_REPEAT_DELAY_MS;
+    } else if (held.has(a)) {
+      if (now >= pad.repeatAt[a]) {
+        fire.add(a);
+        pad.repeatAt[a] = now + PAD_REPEAT_RATE_MS;
+      }
+    } else {
+      delete pad.repeatAt[a];
+    }
+  }
+  if (!fire.size && !fresh.size) return;
+
+  // Jogando
+  if (currentScreen === Screen.GAME && state && !matchOver() && !state.paused) {
+    for (const a of fire) runAction(a, false);
+    return;
+  }
+
+  // Menus e janelas de pause / game over
+  for (const a of fire) if (DIRECTIONS[a]) uiNavigate(a);
+  if (currentScreen === Screen.GAME && state) {
+    if (matchOver()) {
+      if (fresh.has(PAD_BACK)) goToMenu();
+      else if (fresh.has(PAD_START)) restart();
+      else if (fresh.has(PAD_CONFIRM)) uiConfirm();
+    } else if (fire.has("pause") || fresh.has(PAD_BACK)) {
+      togglePause();
+    } else if (fire.has("restart")) {
+      restart();
+    } else if (fresh.has(PAD_CONFIRM)) {
+      uiConfirm();
+    }
+    return;
+  }
+  if (fresh.has(PAD_BACK)) goBack();
+  else if (fresh.has(PAD_CONFIRM) || fresh.has(PAD_START)) uiConfirm();
+}
+
+function shortPadName(id) {
+  return id.replace(/\s*\(.*?\)\s*/g, " ").trim() || "Controle";
+}
+
+function refreshPadStatus() {
+  const pads = connectedPads();
+  $("padStatus").textContent = pads.length
+    ? `Controle conectado: ${shortPadName(pads[0].id)}`
+    : "Nenhum controle detectado. Conecte um e aperte qualquer botão dele.";
+  $("menuHint").textContent = "↑ ↓ para escolher · Enter para confirmar"
+    + (pads.length ? " · Controle: A confirma, B volta" : "");
+  renderHelp();
+}
+
+window.addEventListener("gamepadconnected", (e) => {
+  showToast(`Controle conectado: ${shortPadName(e.gamepad.id)}`);
+  refreshPadStatus();
+});
+window.addEventListener("gamepaddisconnected", () => {
+  showToast("Controle desconectado");
+  refreshPadStatus();
+});
+
+/* =========================================================
+   CONTROLS SCREEN (remapeamento)
+   Clique (ou A) num campo e aperte a nova tecla/botão. Uma tecla só
+   pode ter uma função: se já estava em outra ação, sai de lá.
+   ========================================================= */
+const CAPTURE_TIMEOUT_MS = 8000;
+const BIND_STATUS_IDLE = "Escolha um campo para trocar a tecla ou o botão. Cada ação aceita dois de cada.";
+let capture = null; // { device, action, slot, timer } enquanto espera a nova tecla/botão
+
+function setBindStatus(text, active = false) {
+  const el = $("bindStatus");
+  el.textContent = text;
+  el.classList.toggle("active", active);
+}
+
+function renderBindings() {
+  const tbody = $("bindRows");
+  tbody.innerHTML = "";
+  for (const { id, label } of ACTIONS) {
+    const tr = document.createElement("tr");
+    const th = document.createElement("th");
+    th.scope = "row";
+    th.textContent = label;
+    tr.appendChild(th);
+    for (const device of DEVICES) {
+      for (const slot of [0, 1]) {
+        const code = bindings[device][id][slot];
+        const listening = !!capture && capture.device === device && capture.action === id && capture.slot === slot;
+        const b = document.createElement("button");
+        b.className = "bind-slot";
+        b.dataset.device = device;
+        b.dataset.action = id;
+        b.dataset.slot = slot;
+        b.textContent = listening ? "Aguardando…" : codeLabel(device, code);
+        b.classList.toggle("listening", listening);
+        b.classList.toggle("empty", !code);
+        b.setAttribute("aria-label",
+          `${label}, ${device === "keyboard" ? "teclado" : "controle"} ${slot + 1}: ${codeLabel(device, code)}`);
+        b.addEventListener("click", () => startCapture(device, id, slot));
+        const td = document.createElement("td");
+        td.appendChild(b);
+        tr.appendChild(td);
+      }
+    }
+    tbody.appendChild(tr);
+  }
+}
+
+function focusSlot(device, action, slot) {
+  $("bindRows").querySelector(
+    `.bind-slot[data-device="${device}"][data-action="${action}"][data-slot="${slot}"]`)?.focus();
+}
+
+function startCapture(device, action, slot) {
+  const same = !!capture && capture.device === device && capture.action === action && capture.slot === slot;
+  cancelCapture(false);
+  if (same) {
+    setBindStatus(BIND_STATUS_IDLE);
+    return; // clicar de novo no mesmo campo cancela
+  }
+  capture = { device, action, slot, timer: setTimeout(() => cancelCapture(), CAPTURE_TIMEOUT_MS) };
+  const where = device === "keyboard" ? "teclado" : "controle";
+  const how = device === "keyboard"
+    ? "Pressione a nova tecla (Delete apaga o campo)."
+    : "Aperte o novo botão ou mova o analógico (Esc no teclado cancela).";
+  setBindStatus(`Configurando “${actionLabel(action)}” no ${where}, campo ${slot + 1}. ${how}`, true);
+  renderBindings();
+  focusSlot(device, action, slot);
+}
+
+function cancelCapture(announce = true) {
+  if (!capture) return;
+  const { device, action, slot, timer } = capture;
+  clearTimeout(timer);
+  capture = null;
+  renderBindings();
+  focusSlot(device, action, slot);
+  if (announce) setBindStatus("Alteração cancelada. " + BIND_STATUS_IDLE);
+}
+
+/** Grava a nova tecla/botão (`code` null apaga o campo). */
+function finishCapture(code) {
+  const { device, action, slot, timer } = capture;
+  clearTimeout(timer);
+  capture = null;
+  let movedFrom = null;
+  if (code) {
+    for (const a of ACTION_IDS) {
+      bindings[device][a] = bindings[device][a].map((c, i) => {
+        if (c !== code || (a === action && i === slot)) return c;
+        if (a !== action) movedFrom = a;
+        return null;
+      });
+    }
+  }
+  bindings[device][action][slot] = code;
+  saveBindings();
+  renderBindings();
+  renderHelp();
+  focusSlot(device, action, slot);
+  const name = actionLabel(action);
+  setBindStatus(code
+    ? `“${name}” agora usa ${codeLabel(device, code)}.` + (movedFrom ? ` (Removido de “${actionLabel(movedFrom)}”.)` : "")
+    : `“${name}”: campo ${slot + 1} apagado.`);
+  Sound.play("uiClick");
+}
+
+function handleCaptureKey(e) {
+  e.preventDefault();
+  if (capture.device === "gamepad") {
+    if (e.code === "Escape") cancelCapture();
+    return;
+  }
+  if (e.repeat) return;
+  finishCapture(e.code === "Delete" || e.code === "Backspace" ? null : e.code);
+}
+
+function resetBindings() {
+  cancelCapture(false);
+  bindings = cloneBindings(DEFAULT_BINDINGS);
+  saveBindings();
+  renderBindings();
+  renderHelp();
+  setBindStatus("Controles restaurados para o padrão.");
+}
+
+/** Ajuda do painel lateral e atalhos do pause, sempre conforme o mapeamento atual. */
+function renderHelp() {
+  const esc = (t) => t.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+  const kbds = (labels) => labels.length ? labels.map(l => `<kbd>${esc(l)}</kbd>`).join(" ") : '<span class="muted">—</span>';
+  const keys = (action) => bindings.keyboard[action].filter(Boolean).map(keyLabel);
+  const moveSets = [0, 1]
+    .map(i => ["left", "up", "down", "right"].map(a => bindings.keyboard[a][i]).filter(Boolean).map(keyLabel))
+    .filter(set => set.length);
+  const lines = [
+    `${moveSets.map(kbds).join(" ou ") || kbds([])} mover cursor`,
+    `${kbds(keys("swap"))} trocar blocos`,
+    `${kbds(keys("turbo"))} (segurar) subir a pilha rápido`,
+    `${kbds(keys("pause"))} pausar`,
+    `${kbds(keys("restart"))} reiniciar`,
+  ];
+  if (connectedPads().length) {
+    const g = (a) => esc(padLabel(bindings.gamepad[a].find(Boolean) || null));
+    lines.push(`<span class="muted">Controle: ${g("swap")} troca · ${g("turbo")} turbo · ${g("pause")} pausa</span>`);
+  }
+  $("helpText").innerHTML = lines.join("<br>")
+    + "<br><br>A pilha sobe sozinha e acelera com o tempo. Combos e cadeias pausam a subida. "
+    + `Encostou no topo? Você tem ${(GRACE_TIME_MS / 1000).toLocaleString("pt-BR")} s para abrir espaço.`;
+  const setKey = (id, code) => {
+    const el = $(id);
+    el.textContent = keyLabel(code);
+    el.hidden = !code;
+  };
+  setKey("resumeKey", bindings.keyboard.pause.find(Boolean) || null);
+  setKey("pauseRestartKey", bindings.keyboard.restart.find(Boolean) || null);
+}
+
+function togglePause() {
+  if (matchOver()) return;
+  setPausedAll(!state.paused); // pausa (ou volta) os dois tabuleiros juntos
+  Sound.play(state.paused ? "pause" : "unpause");
+}
+
+function moveCursor(dx, dy) {
+  const c = state.cursor;
+  const before = c.x + "," + c.y;
+  // O cursor ocupa x e x+1, então x vai de 0 a COLS-2
+  c.x = Math.max(0, Math.min(CONFIG.COLS - 2, c.x + dx));
+  c.y = Math.max(0, Math.min(CONFIG.ROWS - 1, c.y + dy));
+  if (c.x + "," + c.y !== before) Sound.play("cursor");
+}
+
+/* =========================================================
+   SWAP
+   Regras por painel (não pelo tabuleiro inteiro):
+   - só painéis PARADOS (idle) ou casas vazias podem ser trocados;
+   - painel sumindo, caindo, flutuando ou em troca não pode;
+   - não dá para trocar com um vazio que tem painel caindo logo acima;
+   - um painel trocado para cima de um buraco cai depois da troca.
+   ========================================================= */
+const swappable = (c) => c === EMPTY || (isPanel(c) && c.state === PanelState.IDLE);
+const fallingish = (c) => isPanel(c) && (c.state === PanelState.FALLING || c.state === PanelState.HOVER);
+
+function canSwapAt(grid, x, y) {
+  const a = grid[y][x], b = grid[y][x + 1];
+  if (a === EMPTY && b === EMPTY) return false;
+  if (!swappable(a) || !swappable(b)) return false;
+  for (const [cell, cx] of [[a, x], [b, x + 1]]) {
+    if (cell === EMPTY && y > 0 && fallingish(grid[y - 1][cx])) return false;
+  }
+  return true;
+}
+
+function trySwap() {
+  if (matchOver()) return false;
+  const { x, y } = state.cursor;
+  const g = state.grid;
+  if (!canSwapAt(g, x, y)) return false;
+  const a = g[y][x], b = g[y][x + 1];
+  g[y][x] = b;
+  g[y][x + 1] = a;
+  if (b) startSwap(b, 1);   // veio da direita
+  if (a) startSwap(a, -1);  // veio da esquerda
+  Sound.play("swap");
+  return true;
+}
+
+function startSwap(p, from) {
+  p.state = PanelState.SWAPPING;
+  p.timer = p.total = swapMs();
+  p.swapFrom = from;        // a marca de cadeia (chain) continua com o painel
+}
+
+/* =========================================================
+   MATCH DETECTION
+   Só painéis PARADOS combinam (os que acabaram de pousar ou de trocar
+   também). Painel caindo, flutuando, em troca ou sumindo não entra.
+   ========================================================= */
+const matchable = (c) => isPanel(c) && c.state === PanelState.IDLE;
+
+function findMatches(grid) {
+  const marked = new Set();
+  const key = (x, y) => y * CONFIG.COLS + x;
+  const run = (cells) => {
+    if (cells.length >= CONFIG.MIN_MATCH) for (const [x, y] of cells) marked.add(key(x, y));
+  };
+  for (let y = 0; y < CONFIG.ROWS; y++) {
+    let cur = [];
+    for (let x = 0; x <= CONFIG.COLS; x++) {
+      const c = x < CONFIG.COLS ? grid[y][x] : EMPTY;
+      if (matchable(c) && cur.length && grid[cur[0][1]][cur[0][0]].color === c.color) cur.push([x, y]);
+      else { run(cur); cur = matchable(c) ? [[x, y]] : []; }
+    }
+  }
+  for (let x = 0; x < CONFIG.COLS; x++) {
+    let cur = [];
+    for (let y = 0; y <= CONFIG.ROWS; y++) {
+      const c = y < CONFIG.ROWS ? grid[y][x] : EMPTY;
+      if (matchable(c) && cur.length && grid[cur[0][1]][cur[0][0]].color === c.color) cur.push([x, y]);
+      else { run(cur); cur = matchable(c) ? [[x, y]] : []; }
+    }
+  }
+  return [...marked].map(k => ({ x: k % CONFIG.COLS, y: Math.floor(k / CONFIG.COLS) }));
+}
+
+/* =========================================================
+   BOARD UPDATE (por painel)
+   A cada frame: timers dos painéis → painéis acima do que sumiu entram
+   na cadeia → gravidade (painéis e cristais) → matches → fim da cadeia.
+   ========================================================= */
+const hoverMs = () => HOVER_MS * animMult();
+const fallStepMs = () => FALL_STEP_MS * animMult();
+
+function updateBoard(dt) {
+  const g = state.grid;
+  const popped = [];
+  for (let y = 0; y < CONFIG.ROWS; y++) {
+    for (let x = 0; x < CONFIG.COLS; x++) {
+      const p = g[y][x];
+      if (!isPanel(p)) continue;
+      if (p.chainHold > 0) p.chainHold -= dt;
+      if (p.state === PanelState.SWAPPING) {
+        p.timer -= dt;
+        if (p.timer <= 0) {
+          p.state = PanelState.IDLE;
+          p.swapFrom = 0;
+          if (p.chain) p.chainHold = CHAIN_LAND_HOLD_MS * animMult();
+        }
+      } else if (p.state === PanelState.CLEARING) {
+        p.timer -= dt;
+        if (p.timer <= 0) { g[y][x] = EMPTY; popped.push({ x, y }); }
+      }
+    }
+  }
+  for (const c of [...state.crystals.values()]) {
+    if (!c.breaking) continue;
+    c.breaking.timer -= dt;
+    if (c.breaking.timer <= 0) finishCrystalBreak(c);
+  }
+  for (const { x, y } of popped) markChainAbove(x, y);
+  applyFall(dt);
+  resolveMatches();
+  if (state.chain > 0 && !chainBusy()) state.chain = 0; // cadeia terminou
+}
+
+/** O que estava em cima de uma casa que sumiu vira "parte da cadeia" e flutua antes de cair. */
+function markChainAbove(x, y) {
+  const g = state.grid;
+  for (let yy = y - 1; yy >= 0; yy--) {
+    const p = g[yy][x];
+    if (!isPanel(p) || p.state === PanelState.CLEARING) break;
+    p.chain = true;
+    if (p.state === PanelState.IDLE) {
+      p.state = PanelState.HOVER;
+      p.timer = p.total = hoverMs();
+    }
+  }
+}
+
+/** Gravidade de baixo para cima: painéis caem casa por casa; cristais caem como bloco. */
+function applyFall(dt) {
+  const g = state.grid;
+  const step = dt / fallStepMs();
+  let landedCount = 0;
+  for (let y = CONFIG.ROWS - 1; y >= 0; y--) {
+    for (let x = 0; x < CONFIG.COLS; x++) {
+      const p = g[y][x];
+      if (!isPanel(p)) continue;
+      if (p.state === PanelState.IDLE) {
+        if (y < CONFIG.ROWS - 1 && g[y + 1][x] === EMPTY) { p.state = PanelState.FALLING; p.fallP = 0; }
+        else continue;
+      }
+      if (p.state === PanelState.HOVER) {
+        p.timer -= dt;
+        if (p.timer > 0) continue;
+        p.state = PanelState.FALLING;
+        p.fallP = 0;
+      }
+      if (p.state !== PanelState.FALLING) continue;
+      p.fallP += step;
+      let cy = y;
+      for (;;) {
+        const below = cy + 1 < CONFIG.ROWS ? g[cy + 1][x] : "floor";
+        if (below === EMPTY) {
+          if (p.fallP < 1) break;            // ainda a caminho da próxima casa
+          g[cy + 1][x] = p;
+          g[cy][x] = EMPTY;
+          cy++;
+          p.fallP -= 1;
+          continue;
+        }
+        if (fallingish(below)) {             // acompanha o painel de baixo, sem sobrepor
+          p.fallP = Math.min(p.fallP, below.state === PanelState.FALLING ? below.fallP : 0);
+          break;
+        }
+        p.state = PanelState.IDLE;           // apoiado: pousa
+        p.fallP = 0;
+        p.landed = true;
+        if (p.chain) p.chainHold = CHAIN_LAND_HOLD_MS * animMult();
+        landedCount++;
+        break;
+      }
+    }
+  }
+  if (landedCount) Sound.play(landedCount >= FALL_MULTI_MIN_BLOCKS ? "fallMulti" : "fall", { gap: 70 });
+  // Cristais: de baixo para cima; descem uma casa quando toda a base estiver livre
+  const list = [...state.crystals.values()].filter(c => !c.breaking).sort((a, b) => (b.y0 + b.h) - (a.y0 + a.h));
+  for (const c of list) {
+    const bottom = c.y0 + c.h - 1;
+    let free = bottom + 1 < CONFIG.ROWS;
+    let waitFall = false;
+    for (let x = c.x0; free && x < c.x0 + c.w; x++) {
+      const below = g[bottom + 1][x];
+      if (below === EMPTY) continue;
+      if (fallingish(below)) waitFall = true;
+      free = false;
+    }
+    if (!free) { if (!waitFall) c.fallP = 0; continue; }
+    c.fallP += step;
+    if (c.fallP >= 1) {
+      c.fallP -= 1;
+      clearCrystalCells(c);
+      c.y0 += 1;
+      placeCrystalCells(c);
+    }
+  }
+}
+
+/** Algo da cadeia ainda em andamento (painel marcado, sumindo, ou cristal quebrando)? */
+function chainBusy() {
+  for (const row of state.grid) {
+    for (const p of row) {
+      if (isPanel(p) && (p.chain || p.state === PanelState.CLEARING)) return true;
+    }
+  }
+  for (const c of state.crystals.values()) if (c.breaking) return true;
+  return false;
+}
+
+/** Alguma coisa sumindo/quebrando agora? (a pilha não sobe enquanto isso) */
+function clearingNow() {
+  for (const row of state.grid) for (const p of row) if (isPanel(p) && p.state === PanelState.CLEARING) return true;
+  for (const c of state.crystals.values()) if (c.breaking) return true;
+  return false;
+}
+
+/* =========================================================
+   RESOLUTION / CHAINS
+   Um match que inclui um painel marcado como "da cadeia" aumenta a
+   cadeia (x2, x3…). Isso vale mesmo se o jogador trocou painéis durante
+   a queda: é o que permite montar cadeias "ao vivo".
+   ========================================================= */
+function resolveMatches() {
+  const g = state.grid;
+  const cells = findMatches(g);
+  if (cells.length) {
+    const isLink = cells.some(({ x, y }) => g[y][x].chain);
+    if (isLink) state.chain = Math.max(state.chain, 1) + 1;
+    else if (state.chain === 0) state.chain = 1;
+    const link = isLink ? state.chain : 1;
+    const count = cells.length;
+    // elemento do clear: o que mais aparece entre as casas combinadas
+    const tally = {};
+    for (const { x, y } of cells) tally[g[y][x].color] = (tally[g[y][x].color] || 0) + 1;
+    const element = Number(Object.keys(tally).sort((a, b) => tally[b] - tally[a])[0]);
+    breakAdjacentCrystals(cells);
+    for (const { x, y } of cells) {
+      const p = g[y][x];
+      p.state = PanelState.CLEARING;
+      p.timer = p.total = clearMs();
+      p.chain = false;
+    }
+    state.bestChain = Math.max(state.bestChain, link);
+    addScore(count, link);
+    Sound.play(count >= 5 ? "clear5" : count === 4 ? "clear4" : "clear3");
+    if (link >= 2) Sound.play("chain" + Math.min(link, MAX_CHAIN_SOUND));
+    // Pausa da pilha (stop time): combos 4+ e elos de cadeia somam tempo
+    if (count >= 4) addStopTime(STOP_TIME_COMBO_BASE_MS + STOP_TIME_COMBO_PER_PANEL_MS * (count - 4));
+    if (link >= 2) addStopTime(STOP_TIME_CHAIN_PER_LINK_MS * (link - 1));
+    registerAttack(count, link, element);
+  }
+  // Painéis da cadeia que pousaram/terminaram a troca sem combinar deixam de ser da cadeia
+  for (const row of g) {
+    for (const p of row) {
+      if (!isPanel(p)) continue;
+      if (p.chain && p.state === PanelState.IDLE && p.chainHold <= 0) p.chain = false;
+      p.landed = false;
+    }
+  }
+}
+
+function addStopTime(ms) {
+  state.stopTime = Math.min(STOP_TIME_MAX_MS, state.stopTime + ms);
+}
+
+/* =========================================================
+   RISE, STOP TIME E TEMPO DE GRAÇA
+   - A pilha não sobe enquanto algo some ou durante o stop time.
+   - Encostou no topo: a pilha para e corre o tempo de graça; se abrir
+     espaço, a graça zera; se acabar sem espaço, é game over.
+   - Stop time ativo impede o game over. Turbo cancela o stop time e
+     não funciona durante a graça.
+   ========================================================= */
+function updateRise(dt) {
+  if (isTurbo() && state.stopTime > 0) state.stopTime = 0;
+  if (clearingNow()) return;
+  if (state.stopTime > 0) {
+    state.stopTime = Math.max(0, state.stopTime - dt);
+    return;
+  }
+  if (topOccupied()) {
+    if (state.grace === null) state.grace = GRACE_TIME_MS;
+    state.grace -= dt;
+    if (state.grace <= 0) gameOver();
+    return;
+  }
+  state.grace = null;
+  state.riseProgress += dt / currentRiseIntervalMs();
+  while (state.riseProgress >= 1) {
+    if (topOccupied()) { state.riseProgress = 1; break; }
+    state.riseProgress -= 1;
+    pushRow();
+  }
+}
+
+/** Empurra a grade uma linha para cima e insere a nova linha no fundo. */
+function pushRow() {
+  const g = state.grid;
+  fixNextRow(state.nextRow, g, state.rng, state.palette);
+  g.shift();
+  g.push(state.nextRow.map(color => makePanel(color)));
+  for (const c of state.crystals.values()) c.y0 -= 1;
+  state.nextRow = createNextRow(state.rowRng, state.palette);
+  // O cursor acompanha os blocos (sobe junto), limitado ao topo
+  state.cursor.y = Math.max(0, state.cursor.y - 1);
+  if (state.ai && state.ai.plan) for (const t of state.ai.plan.swaps) t.y -= 1; // a jogada planejada também subiu
+  for (const p of state.particles) p.y -= CONFIG.CELL;
+  Sound.play("rise", { volume: 0.7, gap: RISE_SOUND_MIN_GAP_MS });
+}
+
+function gameOver() {
+  state.phase = Phase.GAME_OVER;
+  state.grace = null;
+  state.banner = "";
+  Sound.stopLoop();
+  if (match.versus) {
+    // Quem estourou perdeu: se foi a IA, o jogador venceu
+    match.result = state.isAI ? "win" : "lose";
+    Sound.play(state.isAI ? "victory" : "gameOver", { force: true });
+  } else {
+    Sound.play("gameOver");
+  }
+}
+
+/* =========================================================
+   CRYSTALS
+   Geometria em state.crystals (x0, y0 = linha de cima, w, h); as casas
+   visíveis (y >= 0) ficam na grade como { kind: "crystal", id }. Um
+   cristal pode ter linhas acima do topo enquanto ainda está entrando.
+   ========================================================= */
+function placeCrystalCells(c) {
+  for (let y = Math.max(0, c.y0); y < c.y0 + c.h; y++) {
+    for (let x = c.x0; x < c.x0 + c.w; x++) state.grid[y][x] = { kind: "crystal", id: c.id };
+  }
+}
+
+function clearCrystalCells(c) {
+  for (let y = Math.max(0, c.y0); y < c.y0 + c.h; y++) {
+    for (let x = c.x0; x < c.x0 + c.w; x++) {
+      if (isCrystalCell(state.grid[y][x]) && state.grid[y][x].id === c.id) state.grid[y][x] = EMPTY;
+    }
+  }
+}
+
+const crystalsTouch = (a, b) => {
+  const xOverlap = a.x0 < b.x0 + b.w && b.x0 < a.x0 + a.w;
+  const yOverlap = a.y0 < b.y0 + b.h && b.y0 < a.y0 + a.h;
+  return (xOverlap && (a.y0 + a.h === b.y0 || b.y0 + b.h === a.y0))
+      || (yOverlap && (a.x0 + a.w === b.x0 || b.x0 + b.w === a.x0));
+};
+
+/**
+ * Cristais encostados (horizontal/vertical) no clear:
+ * - match do MESMO elemento → quebra o cristal inteiro (e, em dominó, os
+ *   cristais do mesmo elemento encostados nele);
+ * - match de OUTRO elemento → quebra só a linha de baixo.
+ */
+function breakAdjacentCrystals(cells) {
+  const g = state.grid;
+  const hit = new Map(); // id → true se algum match encostado é do mesmo elemento
+  for (const { x, y } of cells) {
+    const color = g[y][x].color;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || nx >= CONFIG.COLS || ny < 0 || ny >= CONFIG.ROWS) continue;
+      const cell = g[ny][nx];
+      if (!isCrystalCell(cell)) continue;
+      const c = state.crystals.get(cell.id);
+      if (!c || c.breaking) continue;
+      hit.set(c.id, (hit.get(c.id) || false) || color === c.element);
+    }
+  }
+  if (!hit.size) return;
+  const whole = new Set([...hit].filter(([, same]) => same).map(([id]) => id));
+  const queue = [...whole];
+  while (queue.length) {                       // efeito dominó
+    const c = state.crystals.get(queue.pop());
+    for (const o of state.crystals.values()) {
+      if (whole.has(o.id) || o.breaking || o.element !== c.element || !crystalsTouch(c, o)) continue;
+      whole.add(o.id);
+      hit.set(o.id, true);
+      queue.push(o.id);
+    }
+  }
+  for (const id of hit.keys()) {
+    state.crystals.get(id).breaking = { all: whole.has(id), timer: clearMs(), total: clearMs() };
+  }
+}
+
+/** As casas quebradas viram painéis (gerador com semente) que ficam parados um instante e caem como cadeia. */
+function finishCrystalBreak(c) {
+  const S = CONFIG.CELL;
+  const rows = [];
+  if (c.breaking.all) for (let y = c.y0; y < c.y0 + c.h; y++) rows.push(y);
+  else rows.push(c.y0 + c.h - 1);
+  clearCrystalCells(c);
+  let cells = 0;
+  for (const y of rows) {
+    if (y < 0) continue;
+    for (let x = c.x0; x < c.x0 + c.w; x++) {
+      const p = makePanel(randomColorExcept(new Set(), state.rng, state.palette), PanelState.HOVER);
+      p.timer = p.total = CRYSTAL_BREAK_HOLD_MS * animMult();
+      p.chain = true;
+      state.grid[y][x] = p;
+      spawnShards(x * S + S / 2, y * S + S / 2, c.element);
+      cells++;
+    }
+  }
+  // O que sobra do cristal: as linhas de cima (no inteiro, só as que ainda estão acima do topo)
+  if (c.breaking.all) c.h = Math.max(0, Math.min(c.h, -c.y0));
+  else c.h -= 1;
+  c.breaking = null;
+  c.fallP = 0;
+  if (c.h > 0) placeCrystalCells(c);
+  else state.crystals.delete(c.id);
+  state.score += cells * CRYSTAL_BREAK_POINTS_PER_CELL;
+  showMessage(rows.length > 1 ? "CRISTAL QUEBRADO!" : "CRISTAL RACHOU!");
+  Sound.play("crystalBreak");
+}
+
+/** Cristal da fila entra pelo topo, linha por linha, onde houver espaço (nunca mata por "não caber"). */
+function dropCrystal(inc) {
+  const g = state.grid;
+  const positions = [];
+  for (let x = 0; x <= CONFIG.COLS - inc.w; x++) {
+    let free = true;
+    for (let k = 0; k < inc.w; k++) if (g[0][x + k] !== EMPTY) free = false;
+    if (free) positions.push(x);
+  }
+  if (!positions.length) return false; // sem espaço agora: espera na fila
+  const x0 = positions[randInt(0, positions.length - 1, state.rng)];
+  const id = state.nextCrystalId++;
+  const c = { id, element: inc.element, x0, w: inc.w, y0: 1 - inc.h, h: inc.h, fallP: 0, breaking: null };
+  state.crystals.set(id, c);
+  placeCrystalCells(c);
+  Sound.play("crystalLand");
+  return true;
+}
+
+/* =========================================================
+   ATTACK (montagem, envio e cancelamento de cristais)
+   Combo (4+ de uma vez) → cristal largo e baixo (1 x 3/4/5/7).
+   Cadeia (x2+) → cristal da largura inteira, 1 linha no x2 e +1 por elo.
+   Tudo o que acontece na janela de 1,8 s se soma; ao fechar, os
+   cristais primeiro cancelam a fila de quem envia (casa por casa) e só a
+   sobra vai para o adversário (o largo primeiro).
+   ========================================================= */
+const comboWidth = (count) => CRYSTAL_COMBO_WIDTHS[count] || CONFIG.COLS;
+const cellsOf = (list) => list.reduce((n, c) => n + c.w * c.h, 0);
+
+function registerAttack(count, link, element) {
+  if (!state.opponent) return; // sem adversário (Endless), não há para quem mandar
+  const a = state.attack || { combos: [], chain: null, timer: 0 };
+  let made = false;
+  if (count >= 4) {
+    a.combos.push({ element, w: comboWidth(count), h: 1 });
+    made = true;
+  }
+  if (link >= 2) {
+    // elemento do ÚLTIMO elo; altura cresce com a cadeia (cada elo conta, sempre)
+    a.chain = { element, w: CONFIG.COLS, h: Math.min(CRYSTAL_MAX_HEIGHT, link - 1) };
+    made = true;
+  }
+  if (made) {
+    a.timer = CRYSTAL_COMBO_WINDOW_MS;
+    state.attack = a;
+  }
+}
+
+/** Remove `n` casas de uma lista de cristais (da frente para trás), sem arredondar. */
+function consumeCells(list, n) {
+  while (n > 0 && list.length) {
+    const c = list[0];
+    const cells = c.w * c.h;
+    if (n >= cells) { n -= cells; list.shift(); continue; }
+    const left = cells - n;
+    n = 0;
+    const full = Math.floor(left / c.w), part = left % c.w;
+    const rest = [];
+    if (full > 0) rest.push({ ...c, h: full });
+    if (part > 0) rest.push({ ...c, w: part, h: 1 }); // linha incompleta segue com a largura que restou
+    list.splice(0, 1, ...rest);
+  }
+}
+
+function sendAttack() {
+  const a = state.attack;
+  state.attack = null;
+  const list = [...a.combos, ...(a.chain ? [a.chain] : [])];
+  const cancel = Math.min(cellsOf(list), cellsOf(state.incoming));
+  if (cancel > 0) {
+    consumeCells(state.incoming, cancel);
+    consumeCells(list, cancel);
+    showMessage("CANCELADO!");
+  }
+  if (!list.length) return;
+  for (const c of list) {
+    state.opponent.incoming.push({ element: c.element, w: c.w, h: c.h, timer: CRYSTAL_DROP_DELAY_MS });
+  }
+  Sound.play("crystalSend");
+  if (state.isAI) Sound.play("crystalWarning", { force: true }); // o jogador precisa ouvir o aviso
+}
+
+function updateAttack(dt) {
+  // Janela do cristal sendo montado (só fecha quando a cadeia acabar)
+  if (state.attack) {
+    state.attack.timer -= dt;
+    if (state.attack.timer <= 0 && !chainBusy()) sendAttack();
+  }
+  // Fila de chegada: conta o tempo e só deixa cair fora de uma cadeia
+  if (!state.incoming.length || chainBusy()) return;
+  for (const inc of state.incoming) inc.timer -= dt;
+  if (state.incoming[0].timer <= 0 && dropCrystal(state.incoming[0])) state.incoming.shift();
+}
+
+/** Estilhaços de cristal (só visual: usa Math.random, não gasta a semente). */
+function spawnShards(cx, cy, element) {
+  for (let i = 0; i < 5; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = 0.06 + Math.random() * 0.16;
+    state.particles.push({
+      x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 0.12,
+      life: 0, max: 520 + Math.random() * 300, size: 3 + Math.random() * 4, rot: Math.random() * 6, element,
+    });
+  }
+}
+
+function updateParticles(dt) {
+  for (const p of state.particles) {
+    p.life += dt;
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 0.0006 * dt;
+    p.rot += dt * 0.01;
+  }
+  state.particles = state.particles.filter(p => p.life < p.max);
+}
+
+/* =========================================================
+   AI
+   Joga com as mesmas regras: anda o cursor casa por casa e troca, inclusive
+   durante quedas. Avalia cada troca permitida numa cópia simplificada da
+   PRÓPRIA grade (nunca olha a próxima linha que ainda não apareceu) e
+   compara com "não fazer nada": assim valoriza trocas que estendem uma
+   cadeia em andamento.
+   ========================================================= */
+function createAI() {
+  return { plan: null, thinkTimer: 500, moveTimer: 0 };
+}
+
+/**
+ * Cópia para simular: { c: cor (0 vazio, -1 cristal), ch: marca de cadeia, el: elemento do cristal }.
+ * Painéis sumindo viram vazio, e o que está acima deles já conta como cadeia.
+ */
+function aiSnapshot() {
+  const g = state.grid;
+  const snap = g.map(row => row.map(cell => {
+    if (cell === EMPTY) return { c: 0, ch: false };
+    if (isCrystalCell(cell)) return { c: -1, ch: false, el: state.crystals.get(cell.id)?.element };
+    if (cell.state === PanelState.CLEARING) return { c: 0, ch: false, popping: true };
+    return { c: cell.color, ch: cell.chain };
+  }));
+  for (let x = 0; x < CONFIG.COLS; x++) {
+    for (let y = CONFIG.ROWS - 1; y >= 0; y--) {
+      if (!snap[y][x].popping) continue;
+      for (let yy = y - 1; yy >= 0 && snap[yy][x].c > 0; yy--) snap[yy][x].ch = true;
+    }
+  }
+  return snap;
+}
+
+const simClone = (s) => s.map(row => row.map(c => ({ ...c })));
+
+function simGravity(s) {
+  for (let x = 0; x < CONFIG.COLS; x++) {
+    let write = CONFIG.ROWS - 1;
+    for (let y = CONFIG.ROWS - 1; y >= 0; y--) {
+      const c = s[y][x];
+      if (c.c === -1) { write = y - 1; continue; } // cristal: apoio fixo na simulação
+      if (c.c === 0) continue;
+      if (y !== write) { s[write][x] = c; s[y][x] = { c: 0, ch: false }; }
+      write--;
+    }
+  }
+}
+
+function simMatches(s) {
+  const out = new Set();
+  for (let y = 0; y < CONFIG.ROWS; y++) {
+    for (let x = 0; x < CONFIG.COLS - 2; x++) {
+      const v = s[y][x].c;
+      if (v > 0 && s[y][x + 1].c === v && s[y][x + 2].c === v) { out.add(y * 10 + x); out.add(y * 10 + x + 1); out.add(y * 10 + x + 2); }
+    }
+  }
+  for (let x = 0; x < CONFIG.COLS; x++) {
+    for (let y = 0; y < CONFIG.ROWS - 2; y++) {
+      const v = s[y][x].c;
+      if (v > 0 && s[y + 1][x].c === v && s[y + 2][x].c === v) { out.add(y * 10 + x); out.add((y + 1) * 10 + x); out.add((y + 2) * 10 + x); }
+    }
+  }
+  return [...out].map(k => ({ x: k % 10, y: Math.floor(k / 10) }));
+}
+
+function simHeight(s) {
+  for (let y = 0; y < CONFIG.ROWS; y++) if (s[y].some(c => c.c !== 0)) return CONFIG.ROWS - y;
+  return 0;
+}
+
+function simPairs(s) {
+  let n = 0;
+  for (let y = 0; y < CONFIG.ROWS; y++) {
+    for (let x = 0; x < CONFIG.COLS; x++) {
+      const v = s[y][x].c;
+      if (v <= 0) continue;
+      if (x + 1 < CONFIG.COLS && s[y][x + 1].c === v) n++;
+      if (y + 1 < CONFIG.ROWS && s[y + 1][x].c === v) n++;
+    }
+  }
+  return n;
+}
+
+/** Resolve a simulação inteira e devolve a nota (combos, elos de cadeia, cristais quebrados). */
+function simResolve(s, level) {
+  let score = 0, link = 0;
+  for (let i = 0; i < 12; i++) {
+    simGravity(s);
+    const m = simMatches(s);
+    if (!m.length) break;
+    const isLink = m.some(({ x, y }) => s[y][x].ch);
+    link = isLink ? Math.max(link, 1) + 1 : Math.max(link, 1);
+    const count = m.length;
+    score += count >= 4 ? 25 + 12 * count : 6;
+    if (isLink) score += 45 * link;
+    for (const { x, y } of m) {
+      const color = s[y][x].c;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || nx >= CONFIG.COLS || ny < 0 || ny >= CONFIG.ROWS || s[ny][nx].c !== -1) continue;
+        score += s[ny][nx].el === color ? 30 : 8;
+      }
+    }
+    for (const { x, y } of m) s[y][x] = { c: 0, ch: false };
+    for (const { x, y } of m) for (let yy = y - 1; yy >= 0 && s[yy][x].c > 0; yy--) s[yy][x].ch = true;
+    if (level.depth < 2) break; // fácil: não enxerga a cascata
+  }
+  return score;
+}
+
+/**
+ * Simula arrastar o painel (x, y) `steps` casas na direção `dir` (±1), troca a troca.
+ * Para antes se o caminho não deixar trocar, ou quando o painel passa por cima de um
+ * buraco (ali ele cairia). Devolve a cópia resultante e os cursores das trocas.
+ */
+function simSlide(snap, x, y, dir, steps) {
+  const s = simClone(snap);
+  const swaps = [];
+  let cx = x;
+  for (let k = 0; k < steps; k++) {
+    const nx = cx + dir;
+    if (nx < 0 || nx >= CONFIG.COLS) break;
+    const a = s[y][cx], b = s[y][nx];
+    if (a.c === -1 || b.c === -1 || a.c === b.c) break;
+    s[y][cx] = b;
+    s[y][nx] = a;
+    swaps.push({ x: Math.min(cx, nx), y });
+    cx = nx;
+    if (y < CONFIG.ROWS - 1 && s[y + 1][cx].c === 0) break; // passou por cima de um buraco: cai aqui
+  }
+  return { s, swaps };
+}
+
+/** Nota de uma jogada = resultado com ela − resultado sem fazer nada (+ altura e preparo − custo). */
+function aiScoreResult(snap, s, baseline, level, swapsCount) {
+  const before = simHeight(snap);
+  const gain = simResolve(s, level) - baseline;
+  const after = simHeight(s);
+  const danger = before >= CONFIG.ROWS - 3;
+  let score = gain + (before - after) * (danger ? 30 : 3);
+  // Sem clear: prepara o próximo juntando iguais (vale mais durante o stop time)
+  if (gain <= 0) score += (simPairs(s) - simPairs(snap)) * (state.stopTime > 0 ? 2.5 : 1.5);
+  return score - (swapsCount - 1) * 1.2;
+}
+
+/** Escolhe a próxima jogada: uma ou mais trocas seguidas (arrastar um painel), ou null. */
+function aiChooseMove(level) {
+  const snap = aiSnapshot();
+  const baseline = simResolve(simClone(snap), level);
+  const g = state.grid;
+  const moves = [];
+  for (let y = 0; y < CONFIG.ROWS; y++) {
+    for (let x = 0; x < CONFIG.COLS; x++) {
+      const cell = g[y][x];
+      if (!isPanel(cell) || cell.state !== PanelState.IDLE) continue;
+      for (const dir of [-1, 1]) {
+        const firstX = dir > 0 ? x : x - 1;
+        if (firstX < 0 || firstX >= CONFIG.COLS - 1 || !canSwapAt(g, firstX, y)) continue;
+        for (let steps = 1; steps <= level.slide; steps++) {
+          const { s, swaps } = simSlide(snap, x, y, dir, steps);
+          if (swaps.length < steps) break;  // o caminho acabou antes
+          const score = aiScoreResult(snap, s, baseline, level, swaps.length);
+          moves.push({ swaps, score, after: s });
+        }
+      }
+    }
+  }
+  if (!moves.length) return null;
+  // Difícil: olha também a melhor troca seguinte depois das 5 melhores jogadas
+  if (level.depth >= 3) {
+    moves.sort((a, b) => b.score - a.score);
+    for (const m of moves.slice(0, 5)) {
+      const base2 = simResolve(simClone(m.after), level);
+      let best2 = 0;
+      for (let y = 0; y < CONFIG.ROWS; y++) {
+        for (let x = 0; x < CONFIG.COLS - 1; x++) {
+          const { s, swaps } = simSlide(m.after, x, y, 1, 1);
+          if (!swaps.length) continue;
+          best2 = Math.max(best2, aiScoreResult(m.after, s, base2, level, 1));
+        }
+      }
+      m.score += best2 * 0.5;
+    }
+  }
+  // Desempate: menos passos de cursor até a primeira troca
+  const c = state.cursor;
+  for (const m of moves) m.score -= (Math.abs(m.swaps[0].x - c.x) + Math.abs(m.swaps[0].y - c.y)) * 0.3;
+  moves.sort((a, b) => b.score - a.score);
+  if (Math.random() < level.errorChance) return moves[Math.floor(Math.random() * Math.min(moves.length, 8))];
+  return moves[0].score > 0.5 ? moves[0] : null;
+}
+
+function updateAI(dt) {
+  const ai = state.ai;
+  const level = AI_LEVELS[match.aiLevel];
+  ai.thinkTimer -= dt;
+  ai.moveTimer -= dt;
+  if (!ai.plan && ai.thinkTimer <= 0) {
+    ai.plan = aiChooseMove(level);
+    ai.thinkTimer = ai.plan ? level.thinkMs * (0.7 + Math.random() * 0.6) : level.thinkMs * 0.5;
+    // Sem jogada, pilha baixa e fora do stop time: sobe a pilha (turbo) para ter peças novas
+    ai.turbo = !ai.plan && level.turbo && state.stopTime === 0 && !chainBusy()
+      && state.grid.findIndex(row => row.some(c => c !== EMPTY)) > CONFIG.ROWS / 2;
+    if (ai.plan) { ai.plan.step = 0; ai.plan.wait = 0; }
+  }
+  const p = ai.plan;
+  if (!p || ai.moveTimer > 0) return;
+  ai.turbo = false;
+  const target = p.swaps[p.step];
+  if (!target || target.y < 0) { ai.plan = null; return; }
+  ai.moveTimer = level.moveMs * (0.8 + Math.random() * 0.4);
+  const c = state.cursor;
+  if (c.x !== target.x) moveCursor(Math.sign(target.x - c.x), 0);   // um passo por vez, sem teleporte
+  else if (c.y !== target.y) moveCursor(0, Math.sign(target.y - c.y));
+  else if (trySwap()) {
+    p.step++;
+    p.wait = 0;
+    if (p.step >= p.swaps.length) {
+      ai.plan = null;
+      ai.thinkTimer = Math.min(ai.thinkTimer, level.thinkMs * 0.4);
+    }
+  } else if ((p.wait += 1) > 6) {
+    ai.plan = null;                    // a grade mudou e a troca não cabe mais: replaneja
+    ai.thinkTimer = 0;
+  }
+}
+
+/* =========================================================
+   SCORING
+   ========================================================= */
+function addScore(blockCount, chain) {
+  let points = blockCount * CONFIG.POINTS_PER_BLOCK;
+
+  const extra = blockCount - CONFIG.MIN_MATCH;
+  if (extra > 0) points += extra * CONFIG.COMBO_BONUS_PER_BLOCK;
+
+  if (chain >= 2) {
+    const table = CONFIG.CHAIN_BONUS;
+    points += table[Math.min(chain, table.length - 1)];
+  }
+
+  state.score += points;
+
+  const parts = [];
+  if (chain >= 2) parts.push(`CHAIN x${chain}!`);
+  if (blockCount > CONFIG.MIN_MATCH) parts.push(`COMBO ${blockCount}`);
+  if (parts.length) showMessage(parts.join("  "));
+}
+
+function showMessage(text) {
+  state.message = text;
+  state.messageTimer = 1500;
+}
+
+function showBanner(text) {
+  state.banner = text;
+  state.bannerTimer = CONFIG.BANNER_MS;
+}
+
+/* =========================================================
+   UPDATE (lógica por frame, por tabuleiro)
+   ========================================================= */
+function update(dt) {
+  // Pausado: nada avança (pilha, cronômetro, animações, cadeias, avisos)
+  if (state.paused) return;
+  state.clock += dt;
+  updateParticles(dt);
+  if (matchOver()) return;
+
+  state.elapsedMs += dt;
+  updateSpeedWarnings();
+  updateBoard(dt);
+  updateAttack(dt);
+  updateRise(dt);
+  if (matchOver()) return;
+  if (state.ai) updateAI(dt);
+
+  if (state.messageTimer > 0) {
+    state.messageTimer -= dt;
+    if (state.messageTimer <= 0) state.message = "";
+  }
+  if (state.bannerTimer > 0) {
+    state.bannerTimer -= dt;
+    if (state.bannerTimer <= 0) state.banner = "";
+  }
+}
+
+/** Mostra um aviso sempre que um novo minuto de partida começa. */
+function updateSpeedWarnings() {
+  const level = Math.floor(state.elapsedMs / CONFIG.SPEED_WARNING_EVERY_MS);
+  if (level <= state.speedLevel) return;
+  state.speedLevel = level;
+  const frenzyLevel = Math.floor(CONFIG.FRENZY_TIME_MS / CONFIG.SPEED_WARNING_EVERY_MS);
+  if (level === frenzyLevel) showBanner("MODO FRENÉTICO!");
+  else showBanner(isFrenzy() ? "VELOCIDADE ↑↑" : "VELOCIDADE ↑");
+}
+
+/* =========================================================
+   TILE ART
+   Cada elemento é desenhado UMA vez num canvas fora da tela
+   (sprite) e depois apenas copiado a cada frame.
+   Estrutura de cada peça: sombra → corpo com gradiente → textura
+   → bisel (faces claras/escuras) → painel interno rebaixado
+   → ícone em relevo → brilho → contorno.
+   ========================================================= */
+
+/** Gerador pseudoaleatório com semente: a textura sai sempre igual. */
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function buildSprite(el, sizePx, seed) {
+  const c = document.createElement("canvas");
+  c.width = c.height = sizePx;
+  drawTile(c.getContext("2d"), sizePx, el, mulberry32(seed));
+  return c;
+}
+
+function drawTile(g, s, el, rand) {
+  const m = s * 0.05;                    // margem até a borda da célula
+  const x0 = m, y0 = m, x1 = s - m, y1 = s - m;
+  const b = s * 0.11;                    // largura do bisel
+  const ix0 = x0 + b, iy0 = y0 + b, ix1 = x1 - b, iy1 = y1 - b;
+  const trace = el.rough
+    ? roughOutline(g, x0, y0, x1, y1, s, rand)
+    : () => roundRectOn(g, x0, y0, x1 - x0, y1 - y0, s * 0.08);
+
+  // Sombra projetada
+  g.save();
+  g.translate(s * 0.01, s * 0.03);
+  trace();
+  g.fillStyle = "rgba(0,0,0,0.45)";
+  g.fill();
+  g.restore();
+
+  g.save();
+  trace();
+  g.clip();
+
+  // Corpo: gradiente diagonal + brilho central
+  const body = g.createLinearGradient(x0, y0, x1, y1);
+  body.addColorStop(0, el.light);
+  body.addColorStop(1, el.dark);
+  g.fillStyle = body;
+  g.fillRect(0, 0, s, s);
+  if (el.glow) {
+    const glow = g.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s * 0.5);
+    glow.addColorStop(0, el.glow);
+    glow.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = glow;
+    g.fillRect(0, 0, s, s);
+  }
+
+  el.texture(g, s, rand);
+
+  // Bisel: faces claras em cima/esquerda, escuras embaixo/direita
+  poly(g, [[0, 0], [s, 0], [ix1, iy0], [ix0, iy0]], "rgba(255,255,255,0.38)");
+  poly(g, [[0, 0], [ix0, iy0], [ix0, iy1], [0, s]], "rgba(255,255,255,0.18)");
+  poly(g, [[s, 0], [s, s], [ix1, iy1], [ix1, iy0]], "rgba(0,0,0,0.16)");
+  poly(g, [[0, s], [ix0, iy1], [ix1, iy1], [s, s]], "rgba(0,0,0,0.28)");
+
+  // Painel interno rebaixado: sombra em cima/esquerda, luz embaixo/direita
+  g.lineWidth = Math.max(1, s * 0.014);
+  g.strokeStyle = "rgba(0,0,0,0.25)";
+  g.beginPath(); g.moveTo(ix0, iy1); g.lineTo(ix0, iy0); g.lineTo(ix1, iy0); g.stroke();
+  g.strokeStyle = "rgba(255,255,255,0.35)";
+  g.beginPath(); g.moveTo(ix1, iy0); g.lineTo(ix1, iy1); g.lineTo(ix0, iy1); g.stroke();
+
+  if (el.icon) el.icon(g, s);
+
+  // Brilho superior
+  const gloss = g.createLinearGradient(0, y0, 0, s * 0.55);
+  gloss.addColorStop(0, el.matte ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.30)");
+  gloss.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = gloss;
+  g.fillRect(0, 0, s, s * 0.55);
+
+  // Filete de luz logo dentro do contorno (canto superior esquerdo mais forte)
+  const edge = g.createLinearGradient(x0, y0, x1, y1);
+  edge.addColorStop(0, el.matte ? "rgba(255,255,255,0.30)" : "rgba(255,255,255,0.75)");
+  edge.addColorStop(0.5, "rgba(255,255,255,0.15)");
+  edge.addColorStop(1, "rgba(255,255,255,0)");
+  roundRectOn(g, x0 + s * 0.03, y0 + s * 0.03, x1 - x0 - s * 0.06, y1 - y0 - s * 0.06, s * 0.06);
+  g.lineWidth = Math.max(1, s * 0.012);
+  g.strokeStyle = edge;
+  g.stroke();
+  g.restore();
+
+  // Contorno
+  trace();
+  g.lineWidth = Math.max(1, s * 0.03);
+  g.strokeStyle = el.rim;
+  g.stroke();
+}
+
+// ---------- Helpers de desenho ----------
+
+function poly(g, pts, fill) {
+  g.beginPath();
+  pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+  g.closePath();
+  g.fillStyle = fill;
+  g.fill();
+}
+
+function roundRectOn(g, x, y, w, h, r) {
+  g.beginPath();
+  g.moveTo(x + r, y);
+  g.arcTo(x + w, y, x + w, y + h, r);
+  g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r);
+  g.arcTo(x, y, x + w, y, r);
+  g.closePath();
+}
+
+/** Contorno lascado (pedra): pontos ao longo das bordas puxados para dentro. */
+function roughOutline(g, x0, y0, x1, y1, s, rand) {
+  const corners = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+  const steps = 5, jitter = s * 0.035, chip = s * 0.06;
+  const pts = [];
+  for (let k = 0; k < 4; k++) {
+    const [ax, ay] = corners[k], [bx, by] = corners[(k + 1) % 4];
+    for (let i = 0; i < steps; i++) {
+      const t = i / steps;
+      const px = ax + (bx - ax) * t, py = ay + (by - ay) * t;
+      const dx = s / 2 - px, dy = s / 2 - py, len = Math.hypot(dx, dy);
+      const amt = i === 0 ? chip * (0.6 + rand() * 0.8) : rand() * jitter;
+      pts.push([px + (dx / len) * amt, py + (dy / len) * amt]);
+    }
+  }
+  return () => {
+    g.beginPath();
+    pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+    g.closePath();
+  };
+}
+
+/** Linha aleatória quebrada (rachaduras). */
+function crack(g, s, rand, segments, step) {
+  let x = rand() * s, y = rand() * s;
+  g.beginPath();
+  g.moveTo(x, y);
+  for (let k = 0; k < segments; k++) {
+    x += (rand() - 0.5) * s * step;
+    y += (rand() - 0.5) * s * step;
+    g.lineTo(x, y);
+  }
+}
+
+function softBlob(g, x, y, r, color) {
+  const rg = g.createRadialGradient(x, y, 0, x, y, r);
+  rg.addColorStop(0, color);
+  rg.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = rg;
+  g.fillRect(x - r, y - r, r * 2, r * 2);
+}
+
+/**
+ * Ícone em relevo a partir de um caminho preenchido: sulco escuro ao redor,
+ * sombra projetada, preenchimento, luz interna em cima/esquerda e
+ * sombra interna embaixo/direita.
+ */
+function emboss(g, s, path, fill, outline) {
+  const d = s * 0.018;
+  g.lineJoin = "round";
+  g.save(); path(); g.lineWidth = d * 3; g.strokeStyle = "rgba(0,0,0,0.28)"; g.stroke(); g.restore();
+  g.save(); g.translate(d * 0.6, d * 1.2); path(); g.fillStyle = "rgba(0,0,0,0.45)"; g.fill(); g.restore();
+  path(); g.fillStyle = fill; g.fill();
+  g.save();
+  path(); g.clip();
+  g.lineWidth = d * 1.6;
+  g.translate(d, d); path(); g.strokeStyle = "rgba(255,255,255,0.6)"; g.stroke();
+  g.translate(-2 * d, -2 * d); path(); g.strokeStyle = "rgba(0,0,0,0.35)"; g.stroke();
+  g.restore();
+  path(); g.lineWidth = Math.max(1, s * 0.012); g.strokeStyle = outline; g.stroke();
+}
+
+/** Ícone em relevo a partir de traços (vento, nervuras). */
+function embossStroke(g, s, path, color, outline, width) {
+  const d = s * 0.015;
+  g.lineCap = "round";
+  g.lineJoin = "round";
+  g.save(); g.translate(d * 0.6, d * 1.2); path(); g.strokeStyle = "rgba(10,50,80,0.35)"; g.lineWidth = width; g.stroke(); g.restore();
+  path(); g.strokeStyle = outline; g.lineWidth = width + s * 0.018; g.stroke();
+  path(); g.strokeStyle = color; g.lineWidth = width; g.stroke();
+}
+
+function sphere(g, x, y, r, [hi, mid, lo], outline) {
+  g.beginPath(); g.arc(x + r * 0.12, y + r * 0.22, r, 0, Math.PI * 2);
+  g.fillStyle = "rgba(0,0,0,0.45)"; g.fill();
+  const rg = g.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.05, x, y, r);
+  rg.addColorStop(0, hi); rg.addColorStop(0.55, mid); rg.addColorStop(1, lo);
+  g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2);
+  g.fillStyle = rg; g.fill();
+  g.lineWidth = Math.max(1, r * 0.1); g.strokeStyle = outline; g.stroke();
+}
+
+// ---------- Texturas ----------
+// Texturas leves: dão material ao bloco sem "sujar" a cor principal.
+
+function textureWater(g, s, rand) {
+  g.lineCap = "round";
+  for (let i = 0; i < 9; i++) {
+    crack(g, s, rand, 4, 0.35);
+    g.strokeStyle = i % 3 === 0 ? "rgba(0,40,140,0.22)" : "rgba(210,250,255,0.55)";
+    g.lineWidth = s * (0.008 + rand() * 0.01);
+    g.stroke();
+  }
+}
+
+function textureFire(g, s, rand) {
+  for (let i = 0; i < 7; i++) {
+    const y = rand() * s;
+    g.beginPath();
+    g.moveTo(-s * 0.1, y);
+    g.bezierCurveTo(s * 0.3, y + (rand() - 0.5) * s * 0.4, s * 0.7, y + (rand() - 0.5) * s * 0.4, s * 1.1, y + (rand() - 0.5) * s * 0.2);
+    g.strokeStyle = i % 2 ? "rgba(255,240,120,0.45)" : "rgba(190,20,0,0.18)";
+    g.lineWidth = s * (0.02 + rand() * 0.03);
+    g.stroke();
+  }
+  for (let i = 0; i < 16; i++) {
+    g.beginPath();
+    g.arc(rand() * s, rand() * s, s * (0.006 + rand() * 0.008), 0, Math.PI * 2);
+    g.fillStyle = "rgba(255,250,190,0.95)";
+    g.fill();
+  }
+}
+
+/** Terra batida: manchas quentes e escuras, grãos, pedrinhas e rachaduras finas. */
+function textureEarth(g, s, rand) {
+  for (let i = 0; i < 36; i++) {
+    softBlob(g, rand() * s, rand() * s, s * (0.06 + rand() * 0.12),
+      rand() < 0.55 ? "rgba(255,196,120,0.35)" : "rgba(120,48,8,0.28)");
+  }
+  for (let i = 0; i < 260; i++) {
+    const size = s * (0.008 + rand() * 0.014);
+    g.fillStyle = rand() < 0.5
+      ? `rgba(255,225,175,${0.10 + rand() * 0.22})`
+      : `rgba(90,32,4,${0.10 + rand() * 0.2})`;
+    g.fillRect(rand() * s, rand() * s, size, size);
+  }
+  for (let i = 0; i < 8; i++) {
+    const x = rand() * s, y = rand() * s, r = s * (0.014 + rand() * 0.016);
+    g.beginPath(); g.ellipse(x + r * 0.25, y + r * 0.35, r * 1.2, r, 0, 0, Math.PI * 2);
+    g.fillStyle = "rgba(80,30,5,0.45)"; g.fill();
+    g.beginPath(); g.ellipse(x, y, r * 1.2, r, 0, 0, Math.PI * 2);
+    g.fillStyle = "#f3c690"; g.fill();
+  }
+  g.lineCap = "round";
+  for (let i = 0; i < 3; i++) {
+    crack(g, s, rand, 3, 0.3);
+    g.lineWidth = s * 0.012;
+    g.strokeStyle = "rgba(90,35,5,0.45)";
+    g.stroke();
+  }
+}
+
+function textureAir(g, s, rand) {
+  for (let i = 0; i < 14; i++) {
+    const x = rand() * s;
+    const y = rand() < 0.5 ? s * (0.7 + rand() * 0.35) : s * rand() * 0.35;
+    softBlob(g, x, y, s * (0.08 + rand() * 0.14), "rgba(255,255,255,0.8)");
+  }
+}
+
+function texturePlant(g, s, rand) {
+  for (let i = 0; i < 140; i++) {
+    g.beginPath();
+    g.arc(rand() * s, rand() * s, s * (0.015 + rand() * 0.05), 0, Math.PI * 2);
+    g.fillStyle = rand() < 0.45
+      ? `rgba(0,90,20,${0.08 + rand() * 0.12})`
+      : `rgba(220,255,120,${0.10 + rand() * 0.16})`;
+    g.fill();
+  }
+}
+
+/** Metal polido: riscos de escovado, faixa diagonal de brilho forte e rebites nos cantos. */
+function textureMetal(g, s, rand) {
+  for (let i = 0; i < 46; i++) {
+    const y = rand() * s, x = rand() * s * 0.6, len = s * (0.15 + rand() * 0.5);
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + len, y + (rand() - 0.5) * s * 0.03);
+    g.strokeStyle = rand() < 0.5 ? `rgba(255,255,255,${0.12 + rand() * 0.2})` : `rgba(40,60,90,${0.06 + rand() * 0.1})`;
+    g.lineWidth = s * (0.004 + rand() * 0.006);
+    g.stroke();
+  }
+  const sheen = g.createLinearGradient(0, s, s, 0);
+  sheen.addColorStop(0.30, "rgba(255,255,255,0)");
+  sheen.addColorStop(0.46, "rgba(255,255,255,0.55)");
+  sheen.addColorStop(0.52, "rgba(255,255,255,0.15)");
+  sheen.addColorStop(0.60, "rgba(255,255,255,0.40)");
+  sheen.addColorStop(0.72, "rgba(255,255,255,0)");
+  g.fillStyle = sheen;
+  g.fillRect(0, 0, s, s);
+  for (const [fx, fy] of [[0.22, 0.22], [0.78, 0.22], [0.22, 0.78], [0.78, 0.78]]) {
+    sphere(g, s * fx, s * fy, s * 0.028, ["#ffffff", "#c6d2e0", "#56657a"], "#2a3442");
+  }
+}
+
+// ---------- Ícones ----------
+
+function iconWater(g, s) {
+  const cx = s / 2, cy = s * 0.49, R = s * 0.29;
+  const drop = () => {
+    g.beginPath();
+    g.moveTo(cx, cy - R);
+    g.bezierCurveTo(cx + R * 0.15, cy - R * 0.6, cx + R * 0.72, cy - R * 0.05, cx + R * 0.72, cy + R * 0.38);
+    g.bezierCurveTo(cx + R * 0.72, cy + R * 0.8, cx + R * 0.38, cy + R * 1.02, cx, cy + R * 1.02);
+    g.bezierCurveTo(cx - R * 0.38, cy + R * 1.02, cx - R * 0.72, cy + R * 0.8, cx - R * 0.72, cy + R * 0.38);
+    g.bezierCurveTo(cx - R * 0.72, cy - R * 0.05, cx - R * 0.15, cy - R * 0.6, cx, cy - R);
+    g.closePath();
+  };
+  const fill = g.createRadialGradient(cx - R * 0.2, cy + R * 0.1, 0, cx, cy + R * 0.2, R * 1.1);
+  fill.addColorStop(0, "#f0fdff");
+  fill.addColorStop(0.45, "#5ee3ff");
+  fill.addColorStop(1, "#1592ff");
+  emboss(g, s, drop, fill, "#0742a8");
+  // Reflexo
+  g.beginPath();
+  g.ellipse(cx - R * 0.32, cy + R * 0.35, R * 0.11, R * 0.26, -0.3, 0, Math.PI * 2);
+  g.fillStyle = "rgba(255,255,255,0.9)";
+  g.fill();
+}
+
+function iconFire(g, s) {
+  const cx = s / 2, cy = s * 0.5, R = s * 0.31;
+  const flame = (scale, oy) => () => {
+    const p = (x, y) => [cx + x * scale * R, cy + (y * scale + oy) * R];
+    g.beginPath();
+    g.moveTo(...p(0, 0.95));
+    g.bezierCurveTo(...p(-0.62, 0.95), ...p(-0.82, 0.42), ...p(-0.55, -0.02));
+    g.bezierCurveTo(...p(-0.45, -0.2), ...p(-0.38, -0.3), ...p(-0.42, -0.55));
+    g.bezierCurveTo(...p(-0.2, -0.38), ...p(-0.12, -0.25), ...p(-0.1, -0.18));
+    g.bezierCurveTo(...p(-0.18, -0.55), ...p(0.02, -0.85), ...p(0.12, -1.0));
+    g.bezierCurveTo(...p(0.2, -0.72), ...p(0.42, -0.55), ...p(0.48, -0.3));
+    g.bezierCurveTo(...p(0.52, -0.38), ...p(0.58, -0.46), ...p(0.62, -0.58));
+    g.bezierCurveTo(...p(0.88, -0.12), ...p(0.82, 0.5), ...p(0.55, 0.8));
+    g.bezierCurveTo(...p(0.4, 0.92), ...p(0.2, 0.95), ...p(0, 0.95));
+    g.closePath();
+  };
+  const outer = g.createLinearGradient(0, cy - R, 0, cy + R);
+  outer.addColorStop(0, "#ffe04a");
+  outer.addColorStop(0.55, "#ff7a00");
+  outer.addColorStop(1, "#e81e00");
+  emboss(g, s, flame(1, 0), outer, "#7a0e00");
+  const inner = g.createLinearGradient(0, cy - R * 0.3, 0, cy + R);
+  inner.addColorStop(0, "#ffffe0");
+  inner.addColorStop(1, "#ffd21f");
+  emboss(g, s, flame(0.55, 0.36), inner, "#d45a00");
+}
+
+/** Terra: uma única pedra de contorno irregular e anguloso, com facetas de luz e sombra. */
+function iconEarth(g, s) {
+  const cx = s / 2, cy = s * 0.52, R = s * 0.33;
+  const P = ([x, y]) => [cx + x * R, cy + y * R];
+  // Contorno da pedra (unidades de R), sem simetria e com quinas
+  const OUTLINE = [
+    [-0.95, 0.32], [-0.82, -0.18], [-0.5, -0.5], [-0.12, -0.74], [0.38, -0.55],
+    [0.62, -0.62], [0.9, -0.22], [0.94, 0.2], [0.68, 0.58], [0.12, 0.66], [-0.48, 0.58],
+  ];
+  const PEAK = [0.08, -0.12]; // ponto onde as facetas se encontram
+  const shape = (pts) => () => {
+    g.beginPath();
+    pts.forEach((pt, i) => (i ? g.lineTo(...P(pt)) : g.moveTo(...P(pt))));
+    g.closePath();
+  };
+  const rock = shape(OUTLINE);
+
+  const fill = g.createRadialGradient(cx - R * 0.3, cy - R * 0.4, 0, cx, cy, R * 1.1);
+  fill.addColorStop(0, "#ffe6b8");
+  fill.addColorStop(0.5, "#e9a157");
+  fill.addColorStop(1, "#a85a1c");
+  emboss(g, s, rock, fill, "#552405");
+
+  // Facetas: face de cima iluminada, face de baixo/direita na sombra
+  g.save();
+  rock();
+  g.clip();
+  shape([OUTLINE[1], OUTLINE[2], OUTLINE[3], OUTLINE[4], OUTLINE[5], PEAK])();
+  g.fillStyle = "rgba(255,240,205,0.38)";
+  g.fill();
+  shape([OUTLINE[6], OUTLINE[7], OUTLINE[8], OUTLINE[9], PEAK])();
+  g.fillStyle = "rgba(95,35,5,0.30)";
+  g.fill();
+  // Arestas entre as facetas
+  g.lineCap = "round";
+  g.lineJoin = "round";
+  g.lineWidth = Math.max(1, s * 0.012);
+  g.strokeStyle = "rgba(95,40,8,0.55)";
+  for (const corner of [OUTLINE[1], OUTLINE[5], OUTLINE[6], OUTLINE[9]]) {
+    g.beginPath(); g.moveTo(...P(PEAK)); g.lineTo(...P(corner)); g.stroke();
+  }
+  // Rachadura
+  g.lineWidth = Math.max(1, s * 0.014);
+  g.strokeStyle = "rgba(85,32,4,0.7)";
+  g.beginPath();
+  g.moveTo(...P([-0.6, 0.12]));
+  g.lineTo(...P([-0.38, 0.22]));
+  g.lineTo(...P([-0.3, 0.42]));
+  g.stroke();
+  g.restore();
+
+  // Contorno limpo por cima das facetas
+  rock();
+  g.lineWidth = Math.max(1, s * 0.014);
+  g.strokeStyle = "#552405";
+  g.stroke();
+}
+
+function iconAir(g, s) {
+  const cx = s / 2, cy = s * 0.53, R = s * 0.32;
+  const P = (x, y) => [cx + x * R, cy + y * R];
+  const wind = () => {
+    g.beginPath();
+    // Linha de cima, enrolando para cima
+    g.moveTo(...P(-0.95, -0.1));
+    g.bezierCurveTo(...P(-0.4, -0.2), ...P(0.1, -0.05), ...P(0.35, -0.25));
+    g.bezierCurveTo(...P(0.55, -0.42), ...P(0.3, -0.65), ...P(0.12, -0.48));
+    // Linha do meio, longa
+    g.moveTo(...P(-0.85, 0.15));
+    g.bezierCurveTo(...P(-0.3, 0.08), ...P(0.3, 0.2), ...P(0.75, 0.05));
+    // Linha de baixo, enrolando para baixo
+    g.moveTo(...P(-0.7, 0.38));
+    g.bezierCurveTo(...P(-0.2, 0.35), ...P(0.25, 0.4), ...P(0.35, 0.62));
+    g.bezierCurveTo(...P(0.42, 0.82), ...P(0.15, 0.9), ...P(0.05, 0.75));
+  };
+  embossStroke(g, s, wind, "#ffffff", "#1a9cc8", s * 0.05);
+
+  // Pena no canto superior direito
+  const [fx, fy] = P(0.58, -0.55);
+  const L = R * 0.5, W = R * 0.18;
+  const feather = () => {
+    g.save();
+    g.translate(fx, fy);
+    g.rotate(Math.PI / 4);
+    g.beginPath();
+    g.moveTo(0, -L);
+    g.bezierCurveTo(W, -L * 0.6, W, L * 0.4, 0, L * 0.7);
+    g.bezierCurveTo(-W, L * 0.4, -W, -L * 0.6, 0, -L);
+    g.closePath();
+    g.restore();
+  };
+  emboss(g, s, feather, "#ffffff", "#1a9cc8");
+  const shaft = () => {
+    g.save();
+    g.translate(fx, fy);
+    g.rotate(Math.PI / 4);
+    g.beginPath();
+    g.moveTo(0, -L * 0.8);
+    g.lineTo(0, L * 1.05);
+    g.restore();
+  };
+  shaft();
+  g.lineWidth = Math.max(1, s * 0.012);
+  g.strokeStyle = "#1a9cc8";
+  g.stroke();
+}
+
+/** Planta: folha de bordo grande, centralizada e sem talo. */
+function iconPlant(g, s) {
+  const R = s * 0.45;
+  // Folha de bordo: 5 lobos pontudos (ângulo a partir de "para cima", tamanho),
+  // cada um com um dente lateral, e reentrâncias entre eles
+  const LOBES = [[-122, 0.7], [-60, 0.92], [0, 1], [60, 0.92], [122, 0.7]];
+  // A folha vai de -R (ponta de cima) a ~+0.4R (lobos de baixo): centraliza essa faixa
+  const cx = s / 2, cy = s * 0.5 + R * 0.3;
+  const polar = (deg, r) => {
+    const a = (deg * Math.PI) / 180;
+    return [cx + Math.sin(a) * r * R, cy - Math.cos(a) * r * R];
+  };
+  const leafPoints = [polar(-180, 0.22)];
+  LOBES.forEach(([a, L], i) => {
+    leafPoints.push(
+      polar(a - 24, 0.62 * L), polar(a - 16, 0.82 * L), polar(a - 10, 0.7 * L),
+      polar(a, L),
+      polar(a + 10, 0.7 * L), polar(a + 16, 0.82 * L), polar(a + 24, 0.62 * L));
+    if (i < LOBES.length - 1) leafPoints.push(polar((a + LOBES[i + 1][0]) / 2, 0.48));
+  });
+  leafPoints.push(polar(180, 0.22));
+  const leaf = () => {
+    g.beginPath();
+    leafPoints.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+    g.closePath();
+  };
+
+  const fill = g.createRadialGradient(cx - R * 0.2, cy - R * 0.35, 0, cx, cy - R * 0.2, R * 1.05);
+  fill.addColorStop(0, "#e6ffa8");
+  fill.addColorStop(0.5, "#5fe03a");
+  fill.addColorStop(1, "#16951f");
+  emboss(g, s, leaf, fill, "#0a4d10");
+
+  // Nervuras saindo do centro da base
+  g.lineCap = "round";
+  g.lineWidth = Math.max(1, s * 0.016);
+  g.strokeStyle = "rgba(10,90,20,0.7)";
+  const base = [cx, cy + R * 0.12];
+  for (const [deg, L] of LOBES) {
+    g.beginPath();
+    g.moveTo(...base);
+    g.lineTo(...polar(deg, L * 0.82));
+    g.stroke();
+  }
+}
+
+/** Metal: pilha de três lingotes escuros (dois embaixo, um em cima), com arestas de luz. */
+function iconMetal(g, s) {
+  const bar = (cx, cy, w) => {
+    const h = w * 0.36, d = w * 0.22;          // altura da frente e profundidade do topo
+    const fx0 = cx - w / 2, fx1 = cx + w / 2, fy0 = cy - h / 2, fy1 = cy + h / 2;
+    const front = () => { g.beginPath(); g.moveTo(fx0, fy0); g.lineTo(fx1, fy0); g.lineTo(fx1 - w * 0.06, fy1); g.lineTo(fx0 + w * 0.06, fy1); g.closePath(); };
+    const top = () => { g.beginPath(); g.moveTo(fx0, fy0); g.lineTo(fx0 + d, fy0 - d * 0.75); g.lineTo(fx1 - d * 0.4, fy0 - d * 0.75); g.lineTo(fx1, fy0); g.closePath(); };
+    const ff = g.createLinearGradient(0, fy0, 0, fy1);
+    ff.addColorStop(0, "#5a6270"); ff.addColorStop(1, "#1d2129");
+    const tf = g.createLinearGradient(fx0, fy0 - d, fx1, fy0);
+    tf.addColorStop(0, "#9aa4b4"); tf.addColorStop(1, "#3c434f");
+    g.lineJoin = "round";
+    for (const [shape, fill] of [[front, ff], [top, tf]]) {
+      shape();
+      g.fillStyle = fill; g.fill();
+      g.lineWidth = Math.max(1, s * 0.022); g.strokeStyle = "#0b0e13"; g.stroke();
+      g.lineWidth = Math.max(1, s * 0.008); g.strokeStyle = "rgba(235,245,255,0.75)"; g.stroke();
+    }
+    g.fillStyle = "rgba(255,255,255,0.18)";
+    g.fillRect(fx0 + w * 0.12, fy0 + h * 0.2, w * 0.5, h * 0.12);
+  };
+  const w = s * 0.38;
+  bar(s * 0.31, s * 0.66, w);
+  bar(s * 0.69, s * 0.66, w);
+  bar(s * 0.50, s * 0.45, w);
+}
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+const canvas = $("board");      // tabuleiro do jogador (recebe o foco do teclado)
+const canvas2 = $("board2");    // tabuleiro da IA (Versus)
+for (const c of [canvas, canvas2]) {
+  c.width = Math.round(BOARD_W * DPR);
+  c.height = Math.round(BOARD_H * DPR);
+}
+const ctxP1 = canvas.getContext("2d");
+const ctxP2 = canvas2.getContext("2d");
+let ctx = ctxP1;                // contexto do tabuleiro sendo desenhado agora
+
+/** Põe um tabuleiro "em foco": as funções de jogo e de desenho passam a agir nele. */
+function useBoard(b) {
+  state = b;
+  ctx = b.isAI ? ctxP2 : ctxP1;
+}
+
+// Sprites dos elementos, gerados uma vez na resolução real da tela
+const SPRITE_PX = Math.round(CONFIG.CELL * DPR);
+const sprites = ELEMENTS.map((el, i) => (el ? buildSprite(el, SPRITE_PX, 1000 + i * 77) : null));
+loadTileImages();
+
+/**
+ * Blocos com imagem própria (`image`): quando a imagem carrega, ela substitui
+ * o desenho em código no MESMO sprite, então tudo que usa o sprite (tabuleiro,
+ * cristais, vitrine do menu, escurecido da linha nova, brilho ao sumir) a usa.
+ * Se a imagem faltar, fica o desenho em código.
+ */
+function loadTileImages() {
+  ELEMENTS.forEach((el, i) => {
+    if (!el || !el.image) return;
+    const img = new Image();
+    img.addEventListener("load", () => {
+      const g = sprites[i].getContext("2d");
+      g.clearRect(0, 0, SPRITE_PX, SPRITE_PX);
+      g.imageSmoothingQuality = "high";
+      g.drawImage(img, 0, 0, SPRITE_PX, SPRITE_PX);
+      if ($("menuTiles").childElementCount) renderMenuTiles();
+    }, { once: true });
+    img.src = el.image;
+  });
+}
+
+const ui = {
+  timer: $("timer"),
+  score: $("score"),
+  bestChain: $("bestChain"),
+  speed: $("speed"),
+  chainMsg: $("chainMsg"),
+  pauseOverlay: $("pauseOverlay"),
+  gameOverOverlay: $("gameOverOverlay"),
+  goScore: $("goScore"),
+  goTime: $("goTime"),
+  goChain: $("goChain"),
+  goTitle: $("goTitle"),
+  arena: $("arena"),
+  p2Col: $("p2Col"),
+  huds: [$("p1Hud"), $("p2Hud")],
+};
+
+function formatTime(ms) {
+  const total = Math.floor(ms / 1000);
+  const m = String(Math.floor(total / 60)).padStart(2, "0");
+  const s = String(total % 60).padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+const easeOutQuad = (t) => 1 - (1 - t) * (1 - t);
+
+/** Posição visual (em células) de um painel, conforme o estado dele. */
+function panelDrawPos(p, x, y) {
+  let vx = x, vy = y;
+  if (p.state === PanelState.SWAPPING) {
+    const t = easeOutQuad(1 - Math.max(0, p.timer) / p.total);
+    vx = x + p.swapFrom * (1 - t);               // desliza da casa de onde veio
+  } else if (p.state === PanelState.FALLING) {
+    vy = y + p.fallP;                            // a caminho da próxima casa
+  }
+  return { vx, vy };
+}
+
+/** Aparência de algo sumindo (painel ou cristal): pisca, depois encolhe e some. */
+function clearingLook(time, timer, total) {
+  const p = 1 - Math.max(0, timer) / total;
+  const B = CONFIG.CLEAR_BLINK_PART;
+  if (p < B) return { flash: Math.floor(time / 70) % 2 === 0 ? 0.85 : 0 };
+  const q = (p - B) / (1 - B);
+  return { flash: 0.6 * (1 - q), scale: 1 - q * 0.9, alpha: 1 - q };
+}
+
+function render() {
+  const time = state.clock; // relógio do jogo: congela durante o pause
+  const S = CONFIG.CELL;
+  // Deslocamento vertical da pilha (em pixels) conforme a próxima linha surge
+  const offset = state.riseProgress * S;
+
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.clearRect(0, 0, BOARD_W, BOARD_H);
+  // Tempo de graça: o tabuleiro treme
+  if (state.grace !== null && !matchOver()) ctx.translate(Math.sin(time / 22) * 2.5, 0);
+
+  // Aviso de perigo: brilho vermelho no topo quando a pilha está quase lá
+  if (isInDanger() && state.phase !== Phase.GAME_OVER) {
+    const alpha = 0.25 + 0.15 * Math.sin(time / 120);
+    const grad = ctx.createLinearGradient(0, 0, 0, S * 2);
+    grad.addColorStop(0, `rgba(255,60,70,${alpha})`);
+    grad.addColorStop(1, "rgba(255,60,70,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, BOARD_W, S * 2);
+  }
+
+  // Linhas de fundo (sobem junto com a pilha)
+  ctx.strokeStyle = "#1b1f2c";
+  ctx.lineWidth = 1;
+  for (let x = 1; x < CONFIG.COLS; x++) line(x * S + 0.5, 0, x * S + 0.5, BOARD_H);
+  for (let y = 1; y <= CONFIG.ROWS; y++) {
+    const py = Math.round(y * S - offset) + 0.5;
+    line(0, py, BOARD_W, py);
+  }
+
+  // Painéis (cada um conforme o próprio estado; cristais são desenhados depois, como bloco)
+  for (let y = 0; y < CONFIG.ROWS; y++) {
+    for (let x = 0; x < CONFIG.COLS; x++) {
+      const p = state.grid[y][x];
+      if (!isPanel(p)) continue;
+      const { vx, vy } = panelDrawPos(p, x, y);
+      const look = p.state === PanelState.CLEARING ? clearingLook(time, p.timer, p.total) : undefined;
+      drawBlock(p.color, vx * S, vy * S - offset, look);
+    }
+  }
+
+  // Cristais (podem estar entrando pelo topo: a parte de cima fica fora da tela)
+  for (const c of state.crystals.values()) {
+    const look = c.breaking ? clearingLook(time, c.breaking.timer, c.breaking.total) : null;
+    drawCrystal(c.element, c.x0 * S, (c.y0 + c.fallP) * S - offset, c.w * S, c.h * S, time, look);
+  }
+
+  // Próxima linha surgindo (escurecida, ainda não jogável)
+  for (let x = 0; x < CONFIG.COLS; x++) {
+    drawBlock(state.nextRow[x], x * S, CONFIG.ROWS * S - offset, { shade: 0.6 });
+  }
+
+  drawParticles();
+  if (!matchOver()) drawCursor(time, offset);
+  let top = 0;
+  if (state.incoming.length) { drawIncoming(time); top = 26; }
+  if (state.grace !== null && !matchOver()) drawGrace(time, top);
+  else if (state.stopTime > 0) drawStopTime(top);
+  if (isTurbo()) drawTurboTag();
+  if (state.banner) drawBanner(state.banner, time);
+}
+
+function hexToRgba(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+/** Cristal: bloco translúcido com facetas, brilho pulsante e o ícone do elemento. */
+function drawCrystal(element, px, py, w, h, time, look) {
+  const el = ELEMENTS[element];
+  const pad = 2;
+  const x = px + pad, y = py + pad, cw = w - pad * 2, ch = h - pad * 2;
+  ctx.save();
+  roundRect(x, y, cw, ch, 9);
+  const body = ctx.createLinearGradient(x, y, x + cw, y + ch);
+  body.addColorStop(0, hexToRgba(el.light, 0.62));
+  body.addColorStop(1, hexToRgba(el.dark, 0.72));
+  ctx.fillStyle = body;
+  ctx.fill();
+  ctx.save();
+  ctx.clip();
+  // facetas diagonais
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  ctx.lineWidth = 1.5;
+  for (let k = -ch; k < cw; k += CONFIG.CELL * 0.8) line(x + k, y + ch, x + k + ch, y);
+  // reflexo grande no canto superior esquerdo
+  ctx.fillStyle = "rgba(255,255,255,0.20)";
+  ctx.beginPath();
+  ctx.moveTo(x, y); ctx.lineTo(x + cw * 0.55, y); ctx.lineTo(x, y + ch * 0.75); ctx.closePath();
+  ctx.fill();
+  // ícone do elemento, translúcido, no centro
+  const icon = Math.min(CONFIG.CELL * 0.95, ch - 6, cw - 6);
+  ctx.globalAlpha = 0.55;
+  ctx.drawImage(sprites[element], x + (cw - icon) / 2, y + (ch - icon) / 2, icon, icon);
+  ctx.globalAlpha = 1;
+  // brilhos que piscam
+  for (let i = 0; i < 3; i++) {
+    const t = (time / 900 + i * 0.37) % 1;
+    const sx = x + cw * ((i * 0.41 + 0.18) % 1), sy = y + ch * ((i * 0.63 + 0.25) % 1);
+    const r = 2.5 + 2.5 * Math.sin(t * Math.PI);
+    ctx.fillStyle = `rgba(255,255,255,${0.75 * Math.sin(t * Math.PI)})`;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy - r); ctx.lineTo(sx + r * 0.3, sy); ctx.lineTo(sx, sy + r); ctx.lineTo(sx - r * 0.3, sy); ctx.closePath();
+    ctx.fill();
+  }
+  if (look && look.flash) {
+    ctx.fillStyle = `rgba(255,255,255,${look.flash})`;
+    ctx.fillRect(x, y, cw, ch);
+  }
+  ctx.restore();
+  // contorno claro com brilho suave
+  const glow = 0.6 + 0.25 * Math.sin(time / 260);
+  roundRect(x, y, cw, ch, 9);
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = `rgba(255,255,255,${glow})`;
+  ctx.stroke();
+  roundRect(x + 3, y + 3, cw - 6, ch - 6, 7);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = hexToRgba(el.light, 0.9);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawParticles() {
+  for (const p of state.particles) {
+    const a = 1 - p.life / p.max;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rot);
+    ctx.fillStyle = ELEMENTS[p.element].light;
+    ctx.strokeStyle = "rgba(255,255,255,0.9)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, -p.size); ctx.lineTo(p.size * 0.7, 0); ctx.lineTo(0, p.size); ctx.lineTo(-p.size * 0.7, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/** Fila visível no topo: cada cristal a caminho com tamanho (proporcional) e elemento. */
+function drawIncoming(time) {
+  const first = state.incoming[0];
+  const waiting = chainBusy();             // não cai enquanto este lado está numa cadeia
+  const soon = !waiting && first.timer <= 600;
+  ctx.save();
+  ctx.fillStyle = "rgba(10,8,14,0.8)";
+  ctx.fillRect(0, 0, BOARD_W, 26);
+  const blink = soon && Math.floor(time / 140) % 2 === 0;
+  ctx.fillStyle = blink ? "#ff5a64" : "#ffd84a";
+  ctx.font = "bold 11px system-ui, sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.fillText(waiting ? "CRISTAL ESPERANDO" : `⬇ CRISTAL ${(Math.max(0, first.timer) / 1000).toFixed(1)}s`, 6, 13);
+  let x = BOARD_W - 6;
+  const cell = 3;
+  for (const inc of state.incoming.slice(0, 5)) {
+    const cw = inc.w * cell, chh = Math.min(inc.h, 6) * cell;
+    x -= cw;
+    ctx.fillStyle = ELEMENTS[inc.element].light;
+    ctx.fillRect(x, 13 - chh / 2, cw, chh);
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, 13 - chh / 2 + 0.5, cw - 1, chh - 1);
+    x -= 5;
+  }
+  ctx.restore();
+}
+
+/** Contador da pausa da pilha (stop time). */
+function drawStopTime(top) {
+  ctx.save();
+  ctx.fillStyle = "rgba(10,20,30,0.82)";
+  ctx.fillRect(4, top + 4, 92, 22);
+  ctx.fillStyle = "#7fd6ff";
+  ctx.font = "bold 12px system-ui, sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.fillText(`⏸ PAUSA ${(state.stopTime / 1000).toFixed(1)}s`, 10, top + 15);
+  ctx.fillRect(4, top + 26, 92 * Math.min(1, state.stopTime / STOP_TIME_MAX_MS), 3);
+  ctx.restore();
+}
+
+/** Tempo de graça: barra vermelha piscando. */
+function drawGrace(time, top) {
+  const blink = Math.floor(time / 120) % 2 === 0;
+  ctx.save();
+  ctx.fillStyle = blink ? "rgba(120,10,20,0.85)" : "rgba(60,5,10,0.85)";
+  ctx.fillRect(0, top, BOARD_W, 24);
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 12px system-ui, sans-serif";
+  ctx.textBaseline = "middle";
+  ctx.fillText("PERIGO! Abra espaço no topo", 8, top + 12);
+  ctx.fillStyle = "#ff5a64";
+  ctx.fillRect(0, top + 24, BOARD_W * Math.max(0, state.grace) / GRACE_TIME_MS, 3);
+  ctx.restore();
+}
+
+/** Cabeçalho de cada tabuleiro no Versus: personagem, nome e cristais sendo montados. */
+function syncBoardHud(b, hud) {
+  const a = b.attack;
+  const list = a ? [...a.combos, ...(a.chain ? [a.chain] : [])] : [];
+  const key = list.map(c => `${c.element}:${c.w}x${c.h}`).join("|") || "none";
+  const mini = hud.querySelector(".crystal-mini");
+  if (mini.dataset.key !== key) {
+    mini.dataset.key = key;
+    mini.replaceChildren();
+    mini.classList.toggle("empty", !list.length);
+    mini.style.gridTemplateColumns = "";
+    if (list.length) {
+      for (const c of list) {
+        const shape = document.createElement("span");
+        shape.className = "crystal-shape";
+        shape.style.gridTemplateColumns = `repeat(${c.w}, 5px)`;
+        for (let i = 0; i < c.w * c.h; i++) {
+          const cell = document.createElement("i");
+          cell.style.background = hexToRgba(ELEMENTS[c.element].light, 0.9);
+          shape.appendChild(cell);
+        }
+        mini.appendChild(shape);
+      }
+    } else {
+      mini.textContent = "sem cristal";
+    }
+  }
+  hud.querySelector(".crystal-bar span").style.width = a ? `${Math.max(0, a.timer / CRYSTAL_COMBO_WINDOW_MS) * 100}%` : "0%";
+}
+
+/** Prepara o cabeçalho (arte + nome) de um tabuleiro quando a partida começa. */
+function setupBoardHud(b, hud) {
+  hud.querySelector(".hud-name").textContent = b.name;
+  const art = hud.querySelector(".hud-art");
+  art.replaceChildren(...(b.characterId ? [characterArt(b.characterId)] : []));
+  const mini = hud.querySelector(".crystal-mini");
+  delete mini.dataset.key;
+}
+
+/** Atualiza painel lateral e overlays HTML (pause / game over). */
+function syncHud() {
+  ui.timer.textContent = formatTime(state.elapsedMs);
+  ui.score.textContent = state.score;
+  ui.bestChain.textContent = state.bestChain;
+  const rowsPerMin = 60000 / currentRiseIntervalMs();
+  ui.speed.textContent = rowsPerMin < 10 ? rowsPerMin.toFixed(1) : Math.round(rowsPerMin);
+  ui.speed.className = isTurbo() ? "value turbo"
+    : isFrenzy() ? "value frenzy" : rowsPerMin >= 20 ? "value fast" : "value";
+  ui.chainMsg.textContent = state.message;
+
+  const over = matchOver();
+  const showPause = state.paused && !over;
+  if (ui.pauseOverlay.hidden === showPause) {
+    ui.pauseOverlay.hidden = !showPause;
+    if (showPause) focusOverlayForPad(ui.pauseOverlay);
+    else if (ui.pauseOverlay.contains(document.activeElement)) canvas.focus();
+  }
+  if (ui.gameOverOverlay.hidden === over) {
+    ui.gameOverOverlay.hidden = !over;
+    if (over) {
+      const title = !match.versus ? "GAME OVER" : match.result === "win" ? "VITÓRIA!" : "DERROTA";
+      ui.goTitle.textContent = title;
+      ui.goTitle.className = match.versus && match.result === "win" ? "win" : "danger";
+      ui.goScore.textContent = state.score;
+      ui.goTime.textContent = formatTime(state.elapsedMs);
+      ui.goChain.textContent = state.bestChain;
+      focusOverlayForPad(ui.gameOverOverlay);
+    } else if (ui.gameOverOverlay.contains(document.activeElement)) {
+      canvas.focus();
+    }
+  }
+}
+
+function line(x1, y1, x2, y2) {
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+}
+
+/**
+ * Desenha o sprite de um elemento com o canto superior esquerdo em (px, py).
+ * Opções: alpha (transparência), flash (brilho branco 0..1),
+ * scale (encolher no centro), shade (escurecer 0..1).
+ */
+function drawBlock(type, px, py, { alpha = 1, flash = 0, scale = 1, shade = 0 } = {}) {
+  const S = CONFIG.CELL;
+  const size = S * scale, off = (S - size) / 2;
+  const x = px + off, y = py + off;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(sprites[type], x, y, size, size);
+  const overlay = flash > 0 ? ["#ffffff", flash] : shade > 0 ? ["#05060a", shade] : null;
+  if (overlay) {
+    ctx.globalAlpha = alpha * overlay[1];
+    ctx.fillStyle = overlay[0];
+    roundRect(x + size * 0.05, y + size * 0.05, size * 0.9, size * 0.9, size * 0.08);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawCursor(time, offset) {
+  const S = CONFIG.CELL;
+  const { x, y } = state.cursor;
+  const top = y * S - offset;
+  const pulse = 1 + Math.sin(time / 150) * 1;
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = state.isAI ? "#ffb347" : "#ffffff";
+  roundRect(x * S + 1 - pulse, top + 1 - pulse, S * 2 - 2 + pulse * 2, S - 2 + pulse * 2, 6);
+  ctx.stroke();
+  // Divisória central
+  ctx.lineWidth = 2;
+  line(x * S + S, top + 6, x * S + S, top + S - 6);
+}
+
+function drawBanner(text, time) {
+  const cy = BOARD_H * 0.4;
+  ctx.save();
+  ctx.fillStyle = "rgba(12,14,21,0.75)";
+  ctx.fillRect(0, cy - 30, BOARD_W, 60);
+  ctx.font = '28px "Lilita One", system-ui, sans-serif';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const blink = Math.floor(time / 180) % 2 === 0;
+  ctx.fillStyle = isFrenzy() ? (blink ? "#ff5a64" : "#ffffff") : (blink ? "#ffd84a" : "#ffffff");
+  ctx.fillText(text, BOARD_W / 2, cy);
+  ctx.restore();
+}
+
+/** Etiqueta discreta no canto superior enquanto o turbo está ativo. */
+function drawTurboTag() {
+  ctx.save();
+  ctx.font = "bold 13px system-ui, sans-serif";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "rgba(12,14,21,0.75)";
+  ctx.fillRect(BOARD_W - 84, 6, 78, 22);
+  ctx.fillStyle = "#7fd6ff";
+  ctx.fillText("▲▲ TURBO", BOARD_W - 12, 10);
+  ctx.restore();
+}
+
+function roundRect(x, y, w, h, r) {
+  roundRectOn(ctx, x, y, w, h, r);
+}
+
+/** Desenha os 6 elementos na vitrine do menu principal. */
+function renderMenuTiles() {
+  const host = $("menuTiles");
+  host.replaceChildren();
+  const px = Math.round(40 * DPR);
+  for (let i = 1; i <= NUM_COLORS; i++) {
+    const c = document.createElement("canvas");
+    c.width = c.height = px;
+    c.title = ELEMENTS[i].name;
+    c.getContext("2d").drawImage(sprites[i], 0, 0, px, px);
+    host.appendChild(c);
+  }
+}
+
+/* =========================================================
+   GAME LOOP
+   ========================================================= */
+let lastTime = 0;
+function loop(time) {
+  // Limita dt para a pilha não "pular" várias linhas ao voltar de outra aba
+  const dt = lastTime ? Math.min(time - lastTime, 100) : 0;
+  lastTime = time;
+
+  pollGamepad(time);
+  const keyboardTurbo = bindings.keyboard.turbo.some(c => c && input.keysDown.has(c));
+  input.turbo = currentScreen === Screen.GAME && (keyboardTurbo || input.padTurbo);
+
+  if (currentScreen === Screen.GAME && boards.length) {
+    for (const b of boards) { useBoard(b); update(dt); }
+    for (const b of boards) { useBoard(b); render(); }
+    useBoard(boards[0]);           // fora do loop, `state` é sempre o jogador
+    syncHud();
+    if (match.versus) boards.forEach((b, i) => syncBoardHud(b, ui.huds[i]));
+  }
+
+  // Aviso de perigo em loop enquanto a pilha DO JOGADOR está perto do topo
+  const inGame = currentScreen === Screen.GAME && !!state;
+  const danger = inGame && !state.paused && !matchOver() && isInDanger();
+  Sound.setLoop("warning", danger);
+
+  // Música: some no fim da partida, abaixa no pause e nos menus
+  const over = inGame && matchOver();
+  const level = inGame ? (state.paused ? MUSIC_DUCK : 1) : MUSIC_MENU_LEVEL;
+  Sound.setMusic(!over, level);
+
+  requestAnimationFrame(loop);
+}
+
+/* =========================================================
+   BOOT / RESTART
+   ========================================================= */
+function heroName() {
+  return hero ? hero.name : "Jogador";
+}
+
+/** (Re)começa a partida atual. No Versus, os dois lados recebem a mesma semente. */
+function restart() {
+  const seed = randomSeed();
+  const palette = matchPalette();
+  const player = createInitialState({ seed, palette, characterId: hero ? hero.id : null, name: heroName() });
+  boards = [player];
+  if (match.versus) {
+    const cpu = createInitialState({
+      seed, palette, isAI: true, characterId: match.opponentId, name: CHARACTER_NAMES[match.opponentId - 1],
+    });
+    player.opponent = cpu;
+    cpu.opponent = player;
+    boards.push(cpu);
+  }
+  match.result = null;
+  useBoard(player);
+  // Layout: um tabuleiro (solo) ou dois espelhados (Versus)
+  ui.arena.classList.toggle("versus", match.versus);
+  ui.p2Col.hidden = !match.versus;
+  ui.huds[0].hidden = !match.versus;
+  boards.forEach((b, i) => setupBoardHud(b, ui.huds[i]));
+  Sound.stopMusic(); // a música recomeça do início
+}
+
+// Nome do jogo em todos os textos visíveis vem de GAME_TITLE
+document.title = GAME_TITLE;
+$("gameTitle").textContent = GAME_TITLE;
+document.querySelectorAll(".credits-title").forEach(el => { el.textContent = GAME_TITLE; });
+
+renderMenuTiles();
+buildMap();
+renderHelp();
+refreshPadStatus();
+showScreen(Screen.MENU);
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
