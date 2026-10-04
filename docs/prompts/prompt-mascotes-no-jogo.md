@@ -1,12 +1,12 @@
 # Prompt: Mascotes no jogo (com animações)
 
-> Cole tudo abaixo no Claude Code, com o repositório `cronnosx/another-x-indie-experience` aberto. As imagens já estão no repositório, então não precisa anexar nada.
+> Cole tudo abaixo no Claude Code, com o repositório `CronnoSx/Elementals` aberto. As imagens já estão no repositório, então não precisa anexar nada.
 
 ---
 
-Olá! Este repositório tem o meu jogo de puzzle de navegador no arquivo `panel-attack.html`. O resto do repositório (`index.html`, `script.js`, `style.css`, "Axie Desert Rush") é **outro projeto**. Não mexa nele.
+Olá! Este repositório tem o meu jogo de puzzle de navegador, **Elementals**, no arquivo `panel-attack.html`. Leia o `CLAUDE.md` antes de começar.
 
-Trabalhe na branch `claude/bold-clarke-o2zvt6` e puxe a versão mais recente antes de começar.
+Trabalhe numa branch nova a partir da `main` e, no final, abra um pull request para a `main`.
 
 Quero colocar os **mascotes** no jogo, com animações. Leia tudo antes de começar.
 
@@ -102,6 +102,6 @@ Ao reagir, o mascote troca a imagem para a expressão indicada, faz uma animaç�
   6. Saves antigos sem `mascots` carregam sem erro.
   7. Tudo que já existia continua funcionando, sem erros no console.
 - Tire screenshots do Versus com os dois mascotes e da tela de Mascotes, e me mostre.
-- Faça commit e push para a branch `claude/bold-clarke-o2zvt6`.
+- Faça commit, push e abra um pull request para a `main`.
 - No final, me mande um resumo curto em português do que mudou, de como testar jogando e de quais constantes eu posso ajustar.
 - Se alguma coisa daqui não fizer sentido com o código atual, explique a alternativa antes de mudar.
