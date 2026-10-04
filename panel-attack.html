@@ -874,11 +874,21 @@ const CRYSTAL_WRONG_HITS_MIXED = 4;  // cristal misto (o dobro)
 // errorChance: chance de escolher uma jogada pior · depth: 1 = só o clear imediato,
 // 2 = simula a cascata (cadeias), 3 = cascata + olha uma segunda troca
 // slide: até quantas casas a IA arrasta um painel numa jogada · turbo: sobe a pilha quando não há jogada
-const AI_LEVELS = {
-  easy:   { label: "Fácil",   moveMs: 450, thinkMs: 1600, errorChance: 0.50, depth: 1, slide: 1, turbo: false },
-  normal: { label: "Normal",  moveMs: 240, thinkMs: 560,  errorChance: 0.15, depth: 2, slide: 3, turbo: true },
-  hard:   { label: "Difícil", moveMs: 60,  thinkMs: 80,  errorChance: 0.02, depth: 3, slide: 5, turbo: true },
+// A IA é regulada pelo Normal: ajuste AI_NORMAL e as outras dificuldades acompanham.
+const AI_NORMAL = { moveMs: 240, thinkMs: 560, errorChance: 0.15, depth: 2, slide: 3, turbo: true };
+// speed: multiplica moveMs e thinkMs (maior = mais lenta) · errors: multiplica errorChance
+const AI_LEVEL_FACTORS = {
+  easy: { label: "Fácil",   speed: 2.5, errors: 3.3,  depth: 1, slide: 1, turbo: false },
+  normal: { label: "Normal", speed: 1,   errors: 1 },
+  hard: { label: "Difícil", speed: 0.4, errors: 0.15, depth: 3, slide: 5 },
 };
+const AI_LEVELS = Object.fromEntries(Object.entries(AI_LEVEL_FACTORS).map(([id, f]) => {
+  const { speed, errors, ...rest } = f;
+  return [id, { ...AI_NORMAL, ...rest,
+    moveMs: Math.round(AI_NORMAL.moveMs * speed),
+    thinkMs: Math.round(AI_NORMAL.thinkMs * speed),
+    errorChance: Math.min(0.9, AI_NORMAL.errorChance * errors) }];
+}));
 // Nomes dos adversários (mesma ordem dos sprites char_01 … char_16)
 const CHARACTER_NAMES = ["Lia", "Bia", "Maya", "Nina", "Duda", "Zuri", "Yumi", "Iara",
                          "Theo", "Davi", "Rafa", "Léo", "Bruno", "Caio", "Kenji", "Tauã"];
