@@ -875,7 +875,7 @@ const CRYSTAL_WRONG_HITS_MIXED = 4;  // cristal misto (o dobro)
 // 2 = simula a cascata (cadeias), 3 = cascata + olha uma segunda troca
 // slide: até quantas casas a IA arrasta um painel numa jogada · turbo: sobe a pilha quando não há jogada
 const AI_LEVELS = {
-  easy:   { label: "Fácil",   moveMs: 340, thinkMs: 1100, errorChance: 0.40, depth: 1, slide: 1, turbo: false },
+  easy:   { label: "Fácil",   moveMs: 450, thinkMs: 1600, errorChance: 0.50, depth: 1, slide: 1, turbo: false },
   normal: { label: "Normal",  moveMs: 170, thinkMs: 420,  errorChance: 0.15, depth: 2, slide: 3, turbo: true },
   hard:   { label: "Difícil", moveMs: 60,  thinkMs: 80,  errorChance: 0.02, depth: 3, slide: 5, turbo: true },
 };
@@ -1563,18 +1563,11 @@ function startEndless(beginner = false) {
   startMatch();
 }
 
-/**
- * Campanha: a IA começa fácil e sobe conforme o herói vence biomas
- * (0–1 biomas vencidos: Fácil · 2–3: Normal · 4+: Difícil).
- */
-const CAMPAIGN_AI_BY_WINS = ["easy", "easy", "normal", "normal", "hard"];
-function campaignAiLevel() {
-  const wins = Array.isArray(hero?.beaten) ? hero.beaten.length : 0;
-  return CAMPAIGN_AI_BY_WINS[Math.min(wins, CAMPAIGN_AI_BY_WINS.length - 1)];
-}
+/** Campanha: todos os biomas iniciais têm a mesma dificuldade, Fácil. */
+const CAMPAIGN_AI_LEVEL = "easy";
 
 function startCampaignMatch(biome) {
-  match = { mode: "campaign", biome, versus: true, aiLevel: campaignAiLevel(), opponentId: randomOpponentId(), result: null, beginner: false };
+  match = { mode: "campaign", biome, versus: true, aiLevel: CAMPAIGN_AI_LEVEL, opponentId: randomOpponentId(), result: null, beginner: false };
   startMatch();
 }
 
@@ -2998,7 +2991,7 @@ function aiSnapshot() {
   const g = state.grid;
   const snap = g.map(row => row.map(cell => {
     if (cell === EMPTY) return { c: 0, ch: false };
-    if (isCrystalCell(cell)) return { c: -1, ch: false, el: state.crystals.get(cell.id)?.element };
+    if (isCrystalCell(cell)) { const c = state.crystals.get(cell.id); return { c: -1, ch: false, els: c ? crystalElements(c) : [] }; }
     if (cell.state === PanelState.CLEARING) return { c: 0, ch: false, popping: true };
     return { c: cell.color, ch: cell.chain };
   }));
@@ -3078,7 +3071,7 @@ function simResolve(s, level) {
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = x + dx, ny = y + dy;
         if (nx < 0 || nx >= CONFIG.COLS || ny < 0 || ny >= CONFIG.ROWS || s[ny][nx].c !== -1) continue;
-        score += s[ny][nx].el === color ? 30 : 8;
+        score += s[ny][nx].els.includes(color) ? 30 : 8;
       }
     }
     for (const { x, y } of m) s[y][x] = { c: 0, ch: false };
@@ -4153,7 +4146,9 @@ function drawGrace(time, top) {
 function syncBoardHud(b, hud) {
   const a = b.attack;
   const list = a ? [...a.combos, ...(a.chain ? [a.chain] : [])] : [];
-  const key = list.map(c => `${c.element}:${c.w}x${c.h}`).join("|") || "none";
+  // a prévia já mostra a mistura: com elementos diferentes na janela, todas as peças saem mistas
+  const mixed = [...new Set(list.map(c => c.element))];
+  const key = list.map(c => `${c.element}:${c.w}x${c.h}`).join("|") + (mixed.length > 1 ? "|mix" : "") || "none";
   const mini = hud.querySelector(".crystal-mini");
   if (mini.dataset.key !== key) {
     mini.dataset.key = key;
@@ -4167,7 +4162,8 @@ function syncBoardHud(b, hud) {
         shape.style.gridTemplateColumns = `repeat(${c.w}, 5px)`;
         for (let i = 0; i < c.w * c.h; i++) {
           const cell = document.createElement("i");
-          cell.style.background = hexToRgba(ELEMENTS[c.element].light, 0.9);
+          const e = mixed.length > 1 ? mixed[i % mixed.length] : c.element;
+          cell.style.background = hexToRgba(ELEMENTS[e].light, 0.9);
           shape.appendChild(cell);
         }
         mini.appendChild(shape);
