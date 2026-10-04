@@ -864,6 +864,10 @@ const CRYSTAL_COMBO_WIDTHS = { 4: 3, 5: 4, 6: 5 }; // combo de N painéis → la
 const CRYSTAL_MAX_HEIGHT = 8;                    // cadeia: x2 = 1 linha, cada elo a mais +1, até isto
 const CRYSTAL_DROP_DELAY_MS = 1500;              // tempo na fila (visível) antes de cair
 const CRYSTAL_BREAK_POINTS_PER_CELL = 20;
+// Resistência a matches de OUTRO elemento: quantas trincas racham a linha de baixo.
+// Cada match encostado conta 1 trinca (cada elo de uma cadeia é um match).
+const CRYSTAL_WRONG_HITS_PURE = 2;   // cristal de um elemento só
+const CRYSTAL_WRONG_HITS_MIXED = 4;  // cristal misto (o dobro)
 
 /* ---------- IA ---------- */
 // moveMs: tempo entre passos do cursor · thinkMs: pausa entre decisões
@@ -871,8 +875,8 @@ const CRYSTAL_BREAK_POINTS_PER_CELL = 20;
 // 2 = simula a cascata (cadeias), 3 = cascata + olha uma segunda troca
 // slide: até quantas casas a IA arrasta um painel numa jogada · turbo: sobe a pilha quando não há jogada
 const AI_LEVELS = {
-  easy:   { label: "Fácil",   moveMs: 220, thinkMs: 560, errorChance: 0.25, depth: 1, slide: 2, turbo: false },
-  normal: { label: "Normal",  moveMs: 120, thinkMs: 220, errorChance: 0.08, depth: 2, slide: 4, turbo: true },
+  easy:   { label: "Fácil",   moveMs: 340, thinkMs: 1100, errorChance: 0.40, depth: 1, slide: 1, turbo: false },
+  normal: { label: "Normal",  moveMs: 170, thinkMs: 420,  errorChance: 0.15, depth: 2, slide: 3, turbo: true },
   hard:   { label: "Difícil", moveMs: 60,  thinkMs: 80,  errorChance: 0.02, depth: 3, slide: 5, turbo: true },
 };
 // Nomes dos adversários (mesma ordem dos sprites char_01 … char_16)
@@ -1559,8 +1563,18 @@ function startEndless(beginner = false) {
   startMatch();
 }
 
+/**
+ * Campanha: a IA começa fácil e sobe conforme o herói vence biomas
+ * (0–1 biomas vencidos: Fácil · 2–3: Normal · 4+: Difícil).
+ */
+const CAMPAIGN_AI_BY_WINS = ["easy", "easy", "normal", "normal", "hard"];
+function campaignAiLevel() {
+  const wins = Array.isArray(hero?.beaten) ? hero.beaten.length : 0;
+  return CAMPAIGN_AI_BY_WINS[Math.min(wins, CAMPAIGN_AI_BY_WINS.length - 1)];
+}
+
 function startCampaignMatch(biome) {
-  match = { mode: "campaign", biome, versus: true, aiLevel: settings.aiLevel, opponentId: randomOpponentId(), result: null, beginner: false };
+  match = { mode: "campaign", biome, versus: true, aiLevel: campaignAiLevel(), opponentId: randomOpponentId(), result: null, beginner: false };
   startMatch();
 }
 
@@ -2696,6 +2710,10 @@ function gameOver() {
   if (match.versus) {
     // Quem estourou perdeu: se foi a IA, o jogador venceu
     match.result = state.isAI ? "win" : "lose";
+    if (match.result === "win" && match.mode === "campaign" && hero && match.biome) {
+      hero.beaten = [...new Set([...(Array.isArray(hero.beaten) ? hero.beaten : []), match.biome.id])];
+      saveHero();
+    }
     Sound.play(state.isAI ? "victory" : "gameOver", { force: true });
   } else {
     Sound.play("gameOver");
@@ -2730,14 +2748,25 @@ const crystalsTouch = (a, b) => {
 };
 
 /**
- * Cristais encostados (horizontal/vertical) no clear:
- * - match do MESMO elemento → quebra o cristal inteiro (e, em dominó, os
- *   cristais do mesmo elemento encostados nele);
- * - match de OUTRO elemento → quebra só a linha de baixo.
+ * Cristais encostados (horizontal/vertical) no clear.
+ * Cristal puro (um elemento):
+ * - match do MESMO elemento → quebra inteiro (e, em dominó, os cristais
+ *   puros do mesmo elemento encostados nele);
+ * - match de OUTRO elemento → 1 trinca; com CRYSTAL_WRONG_HITS_PURE trincas
+ *   a linha de baixo racha.
+ * Cristal misto (feito com combos de elementos diferentes na mesma janela):
+ * - match de um dos SEUS elementos → racha a linha de baixo e marca o
+ *   elemento; quando todos os elementos dele foram usados, quebra inteiro;
+ * - match de OUTRO elemento → 1 trinca; com CRYSTAL_WRONG_HITS_MIXED trincas
+ *   a linha de baixo racha.
  */
+const crystalElements = (c) => c.elements || [c.element];
+const isMixedCrystal = (c) => crystalElements(c).length > 1;
+const crystalWrongHits = (c) => isMixedCrystal(c) ? CRYSTAL_WRONG_HITS_MIXED : CRYSTAL_WRONG_HITS_PURE;
+
 function breakAdjacentCrystals(cells) {
   const g = state.grid;
-  const hit = new Map(); // id → true se algum match encostado é do mesmo elemento
+  const touched = new Map(); // id → Set de elementos dos matches encostados
   for (const { x, y } of cells) {
     const color = g[y][x].color;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
@@ -2747,24 +2776,50 @@ function breakAdjacentCrystals(cells) {
       if (!isCrystalCell(cell)) continue;
       const c = state.crystals.get(cell.id);
       if (!c || c.breaking) continue;
-      hit.set(c.id, (hit.get(c.id) || false) || color === c.element);
+      if (!touched.has(c.id)) touched.set(c.id, new Set());
+      touched.get(c.id).add(color);
     }
   }
-  if (!hit.size) return;
-  const whole = new Set([...hit].filter(([, same]) => same).map(([id]) => id));
-  const queue = [...whole];
-  while (queue.length) {                       // efeito dominó
+  if (!touched.size) return;
+  const whole = new Set(), row = new Set();
+  for (const [id, colors] of touched) {
+    const c = state.crystals.get(id);
+    const own = crystalElements(c).filter(el => colors.has(el));
+    if (!isMixedCrystal(c)) {
+      if (own.length) { whole.add(id); continue; }
+    } else if (own.length) {
+      c.solved = [...new Set([...(c.solved || []), ...own])];
+      if (crystalElements(c).every(el => c.solved.includes(el))) whole.add(id);
+      else row.add(id);
+      continue;
+    }
+    // só elementos de fora: trinca
+    c.cracks = (c.cracks || 0) + 1;
+    if (c.cracks >= crystalWrongHits(c)) row.add(id);
+    else crackCrystal(c);
+  }
+  const queue = [...whole].filter(id => !isMixedCrystal(state.crystals.get(id)));
+  while (queue.length) {                       // efeito dominó (só entre cristais puros do mesmo elemento)
     const c = state.crystals.get(queue.pop());
     for (const o of state.crystals.values()) {
-      if (whole.has(o.id) || o.breaking || o.element !== c.element || !crystalsTouch(c, o)) continue;
+      if (whole.has(o.id) || o.breaking || isMixedCrystal(o) || o.element !== c.element || !crystalsTouch(c, o)) continue;
       whole.add(o.id);
-      hit.set(o.id, true);
+      row.delete(o.id);
       queue.push(o.id);
     }
   }
-  for (const id of hit.keys()) {
+  for (const id of [...whole, ...row]) {
     state.crystals.get(id).breaking = { all: whole.has(id), timer: clearMs(), total: clearMs() };
   }
+}
+
+/** Trinca sem rachar: só retorno visual e sonoro (a trinca aparece desenhada no cristal). */
+function crackCrystal(c) {
+  const S = CONFIG.CELL;
+  const y = c.y0 + c.h - 1;
+  for (let x = c.x0; x < c.x0 + c.w; x += 2) spawnShards(x * S + S / 2, y * S + S * 0.8, c.element);
+  showMessage("TRINCOU!");
+  Sound.play("crystalLand");
 }
 
 /** As casas quebradas viram painéis (gerador com semente) que ficam parados um instante e caem como cadeia. */
@@ -2790,6 +2845,7 @@ function finishCrystalBreak(c) {
   if (c.breaking.all) c.h = Math.max(0, Math.min(c.h, -c.y0));
   else c.h -= 1;
   c.breaking = null;
+  c.cracks = 0;
   c.fallP = 0;
   if (c.h > 0) placeCrystalCells(c);
   else state.crystals.delete(c.id);
@@ -2810,7 +2866,9 @@ function dropCrystal(inc) {
   if (!positions.length) return false; // sem espaço agora: espera na fila
   const x0 = positions[randInt(0, positions.length - 1, state.rng)];
   const id = state.nextCrystalId++;
-  const c = { id, element: inc.element, x0, w: inc.w, y0: 1 - inc.h, h: inc.h, fallP: 0, breaking: null };
+  const elements = inc.elements || [inc.element];
+  const c = { id, element: elements[0], elements, x0, w: inc.w, y0: 1 - inc.h, h: inc.h, fallP: 0,
+              breaking: null, cracks: 0, solved: [] };
   state.crystals.set(id, c);
   placeCrystalCells(c);
   Sound.play("crystalLand");
@@ -2874,8 +2932,12 @@ function sendAttack() {
     showMessage("CANCELADO!");
   }
   if (!list.length) return;
+  // Combos de elementos diferentes na mesma janela se misturam: cada pedaço
+  // enviado vira um cristal misto com todos esses elementos.
+  const elements = [...new Set([...a.combos, ...(a.chain ? [a.chain] : [])].map(c => c.element))];
   for (const c of list) {
-    state.opponent.incoming.push({ element: c.element, w: c.w, h: c.h, timer: CRYSTAL_DROP_DELAY_MS });
+    const els = elements.length > 1 ? elements : [c.element];
+    state.opponent.incoming.push({ element: els[0], elements: els, w: c.w, h: c.h, timer: CRYSTAL_DROP_DELAY_MS });
   }
   Sound.play("crystalSend");
   if (state.isAI) Sound.play("crystalWarning", { force: true }); // o jogador precisa ouvir o aviso
@@ -3108,11 +3170,20 @@ function aiChooseMove(level) {
   return moves[0].score > 0.5 ? moves[0] : null;
 }
 
+/**
+ * Aquecimento: no começo da partida a IA joga mais devagar e vai acelerando
+ * até o ritmo normal do nível em AI_WARMUP_MS.
+ */
+const AI_WARMUP_MS = 45000;
+const AI_WARMUP_SLOWDOWN = 1.8; // no segundo zero, a IA é 1,8x mais lenta
+
 function updateAI(dt) {
   const ai = state.ai;
   const level = AI_LEVELS[match.aiLevel];
-  ai.thinkTimer -= dt;
-  ai.moveTimer -= dt;
+  const warm = Math.min(1, state.elapsedMs / AI_WARMUP_MS);
+  const pace = 1 / (AI_WARMUP_SLOWDOWN - (AI_WARMUP_SLOWDOWN - 1) * warm);
+  ai.thinkTimer -= dt * pace;
+  ai.moveTimer -= dt * pace;
   if (!ai.plan && ai.thinkTimer <= 0) {
     ai.plan = aiChooseMove(level);
     ai.thinkTimer = ai.plan ? level.thinkMs * (0.7 + Math.random() * 0.6) : level.thinkMs * 0.5;
@@ -3887,7 +3958,7 @@ function render() {
   // Cristais (podem estar entrando pelo topo: a parte de cima fica fora da tela)
   for (const c of state.crystals.values()) {
     const look = c.breaking ? clearingLook(time, c.breaking.timer, c.breaking.total) : null;
-    drawCrystal(c.element, c.x0 * S, (c.y0 + c.fallP) * S - offset, c.w * S, c.h * S, time, look);
+    drawCrystal(c.element, c.x0 * S, (c.y0 + c.fallP) * S - offset, c.w * S, c.h * S, time, look, c);
   }
 
   // Próxima linha surgindo (escurecida, ainda não jogável)
@@ -3911,8 +3982,9 @@ function hexToRgba(hex, a) {
 }
 
 /** Cristal: bloco translúcido com facetas, brilho pulsante e o ícone do elemento. */
-function drawCrystal(element, px, py, w, h, time, look) {
+function drawCrystal(element, px, py, w, h, time, look, crystal) {
   const el = ELEMENTS[element];
+  const els = crystal ? crystalElements(crystal) : [element];
   const pad = 2;
   const x = px + pad, y = py + pad, cw = w - pad * 2, ch = h - pad * 2;
   ctx.save();
@@ -3933,11 +4005,44 @@ function drawCrystal(element, px, py, w, h, time, look) {
   ctx.beginPath();
   ctx.moveTo(x, y); ctx.lineTo(x + cw * 0.55, y); ctx.lineTo(x, y + ch * 0.75); ctx.closePath();
   ctx.fill();
-  // ícone do elemento, translúcido, no centro
-  const icon = Math.min(CONFIG.CELL * 0.95, ch - 6, cw - 6);
-  ctx.globalAlpha = 0.55;
-  ctx.drawImage(sprites[element], x + (cw - icon) / 2, y + (ch - icon) / 2, icon, icon);
+  // misto: faixas diagonais com as cores dos outros elementos
+  if (els.length > 1) {
+    const band = CONFIG.CELL * 0.55;
+    let i = 0;
+    for (let k = -ch; k < cw + ch; k += band, i++) {
+      const other = els[i % els.length];
+      if (other === element) continue;
+      ctx.fillStyle = hexToRgba(ELEMENTS[other].light, 0.45);
+      ctx.beginPath();
+      ctx.moveTo(x + k, y + ch); ctx.lineTo(x + k + band, y + ch);
+      ctx.lineTo(x + k + band + ch, y); ctx.lineTo(x + k + ch, y); ctx.closePath();
+      ctx.fill();
+    }
+  }
+  // ícones dos elementos, translúcidos, no centro (os já usados num misto ficam apagados)
+  const icon = Math.min(CONFIG.CELL * 0.95, ch - 6, (cw - 6) / els.length);
+  const startX = x + (cw - icon * els.length) / 2;
+  els.forEach((e, i) => {
+    ctx.globalAlpha = crystal && crystal.solved && crystal.solved.includes(e) ? 0.18 : 0.55;
+    ctx.drawImage(sprites[e], startX + i * icon, y + (ch - icon) / 2, icon, icon);
+  });
   ctx.globalAlpha = 1;
+  // trincas na linha de baixo (quantas faltam para rachar)
+  if (crystal && crystal.cracks > 0) {
+    const need = crystalWrongHits(crystal);
+    const rowY = y + ch - CONFIG.CELL + 4;
+    ctx.strokeStyle = "rgba(255,255,255,0.9)";
+    ctx.lineWidth = 1.6;
+    for (let n = 0; n < crystal.cracks; n++) {
+      const cx0 = x + cw * ((n + 0.5) / need);
+      ctx.beginPath();
+      ctx.moveTo(cx0 - 6, rowY);
+      ctx.lineTo(cx0 + 2, rowY + CONFIG.CELL * 0.35);
+      ctx.lineTo(cx0 - 3, rowY + CONFIG.CELL * 0.55);
+      ctx.lineTo(cx0 + 5, ch + y - 2);
+      ctx.stroke();
+    }
+  }
   // brilhos que piscam
   for (let i = 0; i < 3; i++) {
     const t = (time / 900 + i * 0.37) % 1;
@@ -4003,8 +4108,11 @@ function drawIncoming(time) {
   for (const inc of state.incoming.slice(0, 5)) {
     const cw = inc.w * cell, chh = Math.min(inc.h, 6) * cell;
     x -= cw;
-    ctx.fillStyle = ELEMENTS[inc.element].light;
-    ctx.fillRect(x, 13 - chh / 2, cw, chh);
+    const els = inc.elements || [inc.element];
+    els.forEach((e, i) => {
+      ctx.fillStyle = ELEMENTS[e].light;
+      ctx.fillRect(x + (cw * i) / els.length, 13 - chh / 2, cw / els.length, chh);
+    });
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 0.5, 13 - chh / 2 + 0.5, cw - 1, chh - 1);
