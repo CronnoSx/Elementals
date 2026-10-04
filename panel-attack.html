@@ -2534,7 +2534,10 @@ function applyFall(dt) {
       const p = g[y][x];
       if (!isPanel(p)) continue;
       if (p.state === PanelState.IDLE) {
-        if (y < CONFIG.ROWS - 1 && g[y + 1][x] === EMPTY) { p.state = PanelState.FALLING; p.fallP = 0; }
+        // sem apoio: casa vazia embaixo, ou painel que já está caindo (a coluna desce junta,
+        // senão o de baixo pousa sozinho e o de cima fica de fora do match)
+        const under = y < CONFIG.ROWS - 1 ? g[y + 1][x] : null;
+        if (under === EMPTY || (isPanel(under) && under.state === PanelState.FALLING)) { p.state = PanelState.FALLING; p.fallP = 0; }
         else continue;
       }
       if (p.state === PanelState.HOVER) {
