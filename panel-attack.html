@@ -12,16 +12,21 @@
      STYLE
      ========================================================= */
   :root {
-    --bg: #14161f;
-    --panel: #1e2130;
-    --panel-2: #272b3e;
-    --line: #3a3f58;
-    --text: #e8eaf2;
-    --muted: #8a90a8;
+    /* Tema provisório "azul bebê": painéis e menus claros, com texto azul-marinho.
+       Para trocar a cor do jogo, mude só estas variáveis. */
+    --bg: #182338;                       /* fundo da página (fora dos painéis) */
+    --panel: rgba(189, 224, 248, 0.95);  /* painéis e menus: azul bebê */
+    --panel-2: #dcf0fd;                  /* botões e campos dentro dos painéis */
+    --panel-hover: #eef8ff;
+    --line: #86bfe6;
+    --text: #1b2b45;
+    --muted: #4d6583;
     --accent: #ffd84a;
+    --accent-text: #9a6200;            /* destaque em texto (dourado escuro, legível no azul bebê) */
     --danger: #ff5a64;
-    --primary: #4a6cf7;
-    --primary-hover: #5b7bff;
+    --primary: #2f7fd8;
+    --primary-hover: #4192ea;
+    --board-bg: rgba(10, 14, 30, 0.80);  /* tabuleiro: escuro, com só um pouco do bioma atrás */
     --display: "Lilita One", system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   /* Lilita One só tem um peso: o 800 deixa a fonte reserva em negrito
@@ -39,7 +44,15 @@
     align-items: center;
     justify-content: center;
   }
-  #app { width: 100%; padding: 16px; }
+  #app { width: 100%; padding: 16px; position: relative; z-index: 1; }
+  /* Fundo do bioma: só na partida, transparente e escurecido para os blocos ficarem legíveis */
+  #biomeBg {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: center / cover no-repeat;
+    opacity: 0; transition: opacity .6s ease;
+  }
+  #biomeBg::after { content: ""; position: absolute; inset: 0; background: var(--bg); opacity: var(--biome-bg-shade, .12); }
+  #biomeBg.on { opacity: var(--biome-bg-opacity, 1); }
   .screen { width: 100%; display: flex; justify-content: center; }
 
   /* ---------- Menu / Opções ---------- */
@@ -95,7 +108,7 @@
   .menu-btn:hover:not(:disabled), .menu-btn:focus-visible {
     outline: none;
     border-color: var(--accent);
-    background: #2f3450;
+    background: var(--panel-hover);
   }
   .menu-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
   .menu-btn.primary:hover, .menu-btn.primary:focus-visible { background: var(--primary-hover); border-color: #fff; }
@@ -107,7 +120,7 @@
     text-transform: uppercase;
     padding: 3px 8px;
     border-radius: 99px;
-    background: #33384f;
+    background: #c9def0;
     color: var(--muted);
   }
   .menu-hint { font-size: 12px; color: var(--muted); }
@@ -148,11 +161,11 @@
     width: 308px;
     max-width: 100%;
     height: auto;
-    background: #0c0e15;
+    background: var(--board-bg);
     border: 3px solid var(--line);
     border-radius: 6px;
   }
-  #board:focus { outline: none; border-color: #5a6390; }
+  #board:focus { outline: none; border-color: #4f9be0; }
   /* Versus: dois tabuleiros lado a lado, reduzidos em telas estreitas */
   .arena.versus .board-canvas { width: min(308px, calc((100vw - 72px) / 2)); }
   .board-col.p2 .board-canvas { border-color: #6b4a3a; }
@@ -164,6 +177,8 @@
     padding: 6px 8px;
     border-radius: 8px;
     background: var(--panel);
+    backdrop-filter: blur(6px);
+    user-select: none;
   }
   .board-col.p2 .board-hud { flex-direction: row-reverse; text-align: right; }
   .hud-art { position: relative; width: 34px; height: 50px; flex: none; }
@@ -180,7 +195,7 @@
   .crystal-shape { display: grid; gap: 1px; }
   .crystal-shape i { display: block; width: 5px; height: 5px; border-radius: 1px; outline: 1px solid rgba(255,255,255,.6); }
   .crystal-mini.empty { color: var(--muted); font-size: 11px; }
-  .crystal-bar { width: 56px; height: 4px; border-radius: 2px; background: #2c3044; overflow: hidden; }
+  .crystal-bar { width: 56px; height: 4px; border-radius: 2px; background: #a9cfee; overflow: hidden; }
   .crystal-bar span { display: block; height: 100%; width: 0; background: var(--accent); }
   @media (max-width: 560px) {
     .hud-art { display: none; }
@@ -192,6 +207,9 @@
     inset: 3px;
     border-radius: 4px;
     background: rgba(8, 9, 14, 0.84);
+    /* sobre o escuro, o texto volta a ser claro */
+    --text: #eef4fb; --muted: #a9bdd6;
+    color: var(--text);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -203,12 +221,14 @@
   .overlay h2 { font-family: var(--display); font-weight: 400; font-size: 42px; letter-spacing: 1px; margin: 0; }
   .overlay h2.danger { color: var(--danger); }
   .overlay .actions { width: min(230px, 100%); }
+  .overlay .actions { --text: #1b2b45; --muted: #4d6583; color: var(--text); }
   .summary { display: grid; grid-template-columns: repeat(3, auto); gap: 4px 18px; margin: 0; }
   .summary dt { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
   .summary dd { margin: 0; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; grid-row: 2; }
   #side {
     width: 210px;
     background: var(--panel);
+    backdrop-filter: blur(6px);
     border-radius: 8px;
     padding: 16px;
   }
@@ -218,10 +238,10 @@
   .stat .value { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .stat.wide { grid-column: 1 / -1; }
   .stat.wide .value { font-size: 32px; }
-  #speed.fast { color: var(--accent); }
+  #speed.fast { color: var(--accent-text); }
   #speed.frenzy { color: var(--danger); }
   #speed.turbo { color: #7fd6ff; }
-  #chainMsg { color: var(--accent); font-weight: 700; min-height: 22px; font-size: 18px; margin-top: 10px; }
+  #chainMsg { color: var(--accent-text); font-weight: 700; min-height: 22px; font-size: 18px; margin-top: 10px; }
   .side-actions { display: flex; gap: 8px; margin-top: 12px; }
   .side-btn {
     flex: 1;
@@ -237,10 +257,10 @@
   }
   .side-btn:hover { background: var(--primary-hover); }
   .side-btn.secondary { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); }
-  .side-btn.secondary:hover { background: #2f3450; }
+  .side-btn.secondary:hover { background: var(--panel-hover); }
   .help { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 16px; }
   kbd {
-    background: #2c3044; border: 1px solid #454b66; border-radius: 4px;
+    background: #a9cfee; border: 1px solid #7fb0d8; border-radius: 4px;
     padding: 0 5px; font-size: 12px; font-family: inherit; color: var(--text);
   }
   .menu-btn kbd { font-weight: 500; }
@@ -252,7 +272,7 @@
     font-weight: 700;
     letter-spacing: 2px;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--accent-text);
     border-bottom: 1px solid var(--line);
     padding-bottom: 6px;
   }
@@ -369,7 +389,7 @@
     height: 178px;
     overflow: hidden;   /* o desenho nunca invade o cartão vizinho */
   }
-  .char-card:hover, .char-card:focus-visible { outline: none; border-color: var(--accent); background: #2f3450; }
+  .char-card:hover, .char-card:focus-visible { outline: none; border-color: var(--accent); background: var(--panel-hover); }
   .char-card[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
   .char-num {
     position: absolute;
@@ -378,7 +398,7 @@
     min-width: 22px;
     height: 22px;
     border-radius: 11px;
-    background: #14161f;
+    background: var(--panel-2);
     color: var(--text);
     font-size: 12px;
     font-weight: 700;
@@ -426,7 +446,7 @@
     transform: translate(-50%, -50%);
     border-radius: 50%;
     border: 3px solid var(--accent);
-    background: radial-gradient(circle at 50% 35%, #34395a, var(--panel-2) 70%);
+    background: radial-gradient(circle at 50% 35%, #ffffff, var(--panel-2) 70%);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -496,6 +516,7 @@
 </style>
 </head>
 <body>
+<div id="biomeBg" aria-hidden="true"></div>
 <div id="app">
 
   <!-- ======================= MENU PRINCIPAL ======================= -->
@@ -864,17 +885,30 @@ const CRYSTAL_COMBO_WIDTHS = { 4: 3, 5: 4, 6: 5 }; // combo de N painéis → la
 const CRYSTAL_MAX_HEIGHT = 8;                    // cadeia: x2 = 1 linha, cada elo a mais +1, até isto
 const CRYSTAL_DROP_DELAY_MS = 1500;              // tempo na fila (visível) antes de cair
 const CRYSTAL_BREAK_POINTS_PER_CELL = 20;
+// Resistência a matches de OUTRO elemento: quantas trincas racham a linha de baixo.
+// Cada match encostado conta 1 trinca (cada elo de uma cadeia é um match).
+const CRYSTAL_WRONG_HITS = 4;
 
 /* ---------- IA ---------- */
 // moveMs: tempo entre passos do cursor · thinkMs: pausa entre decisões
 // errorChance: chance de escolher uma jogada pior · depth: 1 = só o clear imediato,
 // 2 = simula a cascata (cadeias), 3 = cascata + olha uma segunda troca
 // slide: até quantas casas a IA arrasta um painel numa jogada · turbo: sobe a pilha quando não há jogada
-const AI_LEVELS = {
-  easy:   { label: "Fácil",   moveMs: 220, thinkMs: 560, errorChance: 0.25, depth: 1, slide: 2, turbo: false },
-  normal: { label: "Normal",  moveMs: 120, thinkMs: 220, errorChance: 0.08, depth: 2, slide: 4, turbo: true },
-  hard:   { label: "Difícil", moveMs: 60,  thinkMs: 80,  errorChance: 0.02, depth: 3, slide: 5, turbo: true },
+// A IA é regulada pelo Normal: ajuste AI_NORMAL e as outras dificuldades acompanham.
+const AI_NORMAL = { moveMs: 254, thinkMs: 593, errorChance: 0.15, depth: 2, slide: 3, turbo: true };
+// speed: multiplica moveMs e thinkMs (maior = mais lenta) · errors: multiplica errorChance
+const AI_LEVEL_FACTORS = {
+  easy: { label: "Fácil",   speed: 2.5, errors: 3.3,  depth: 1, slide: 1, turbo: false },
+  normal: { label: "Normal", speed: 1,   errors: 1 },
+  hard: { label: "Difícil", speed: 0.4, errors: 0.15, depth: 3, slide: 5 },
 };
+const AI_LEVELS = Object.fromEntries(Object.entries(AI_LEVEL_FACTORS).map(([id, f]) => {
+  const { speed, errors, ...rest } = f;
+  return [id, { ...AI_NORMAL, ...rest,
+    moveMs: Math.round(AI_NORMAL.moveMs * speed),
+    thinkMs: Math.round(AI_NORMAL.thinkMs * speed),
+    errorChance: Math.min(0.9, AI_NORMAL.errorChance * errors) }];
+}));
 // Nomes dos adversários (mesma ordem dos sprites char_01 … char_16)
 const CHARACTER_NAMES = ["Lia", "Bia", "Maya", "Nina", "Duda", "Zuri", "Yumi", "Iara",
                          "Theo", "Davi", "Rafa", "Léo", "Bruno", "Caio", "Kenji", "Tauã"];
@@ -1512,6 +1546,7 @@ function showScreen(name) {
   if (capture) cancelCapture(false);
   currentScreen = name;
   for (const [key, el] of Object.entries(screens)) el.hidden = key !== name;
+  $("biomeBg").classList.toggle("on", name === Screen.GAME && !!match.bgBiome);
   input.keysDown.clear();
   input.padTurbo = false;
   input.turbo = false;
@@ -1559,8 +1594,11 @@ function startEndless(beginner = false) {
   startMatch();
 }
 
+/** Campanha: todos os biomas iniciais têm a mesma dificuldade, Fácil. */
+const CAMPAIGN_AI_LEVEL = "easy";
+
 function startCampaignMatch(biome) {
-  match = { mode: "campaign", biome, versus: true, aiLevel: settings.aiLevel, opponentId: randomOpponentId(), result: null, beginner: false };
+  match = { mode: "campaign", biome, versus: true, aiLevel: CAMPAIGN_AI_LEVEL, opponentId: randomOpponentId(), result: null, beginner: false };
   startMatch();
 }
 
@@ -1590,8 +1628,26 @@ function startMatch() {
     el.textContent = campaign ? "Voltar ao Mapa" : "Voltar ao Menu";
   });
   $("menuBtn").textContent = campaign ? "Mapa" : "Menu";
+  setBiomeBackground();
   restart();
   showScreen(Screen.GAME);
+}
+
+/**
+ * Fundo da partida: na campanha, o do bioma; no Versus e no Endless, um bioma
+ * sorteado (só visual, por isso pode usar Math.random). Se a imagem faltar,
+ * fica o fundo liso de sempre.
+ */
+const BIOME_BG_DIR = "backgrounds/";
+function setBiomeBackground() {
+  const ids = BIOMES.map(b => b.id);
+  match.bgBiome = match.biome?.id || ids[Math.floor(Math.random() * ids.length)];
+  const el = $("biomeBg");
+  const url = `${BIOME_BG_DIR}${match.bgBiome}.webp`;
+  const img = new Image();
+  img.onload = () => { if (match.bgBiome && url.includes(match.bgBiome)) el.style.backgroundImage = `url("${url}")`; };
+  img.onerror = () => { el.style.backgroundImage = "none"; };
+  img.src = url;
 }
 
 /** Sair da partida: Campanha → mapa · Versus → escolha de dificuldade · Endless → Single Player. */
@@ -2517,7 +2573,10 @@ function applyFall(dt) {
       const p = g[y][x];
       if (!isPanel(p)) continue;
       if (p.state === PanelState.IDLE) {
-        if (y < CONFIG.ROWS - 1 && g[y + 1][x] === EMPTY) { p.state = PanelState.FALLING; p.fallP = 0; }
+        // sem apoio: casa vazia embaixo, ou painel que já está caindo (a coluna desce junta,
+        // senão o de baixo pousa sozinho e o de cima fica de fora do match)
+        const under = y < CONFIG.ROWS - 1 ? g[y + 1][x] : null;
+        if (under === EMPTY || (isPanel(under) && under.state === PanelState.FALLING)) { p.state = PanelState.FALLING; p.fallP = 0; }
         else continue;
       }
       if (p.state === PanelState.HOVER) {
@@ -2696,6 +2755,10 @@ function gameOver() {
   if (match.versus) {
     // Quem estourou perdeu: se foi a IA, o jogador venceu
     match.result = state.isAI ? "win" : "lose";
+    if (match.result === "win" && match.mode === "campaign" && hero && match.biome) {
+      hero.beaten = [...new Set([...(Array.isArray(hero.beaten) ? hero.beaten : []), match.biome.id])];
+      saveHero();
+    }
     Sound.play(state.isAI ? "victory" : "gameOver", { force: true });
   } else {
     Sound.play("gameOver");
@@ -2730,14 +2793,22 @@ const crystalsTouch = (a, b) => {
 };
 
 /**
- * Cristais encostados (horizontal/vertical) no clear:
- * - match do MESMO elemento → quebra o cristal inteiro (e, em dominó, os
- *   cristais do mesmo elemento encostados nele);
- * - match de OUTRO elemento → quebra só a linha de baixo.
+ * Cristais encostados (horizontal/vertical) no clear.
+ * - Match de um elemento DO cristal:
+ *   · cristal de um elemento só → quebra inteiro (e, em dominó, os cristais
+ *     de um elemento só, do mesmo elemento, encostados nele);
+ *   · cristal misto → perde a camada desse elemento (o ícone some e ele
+ *     passa a ser só dos elementos que sobraram). Sem camadas, quebra inteiro.
+ * - Match só de OUTROS elementos → 1 trinca; com CRYSTAL_WRONG_HITS trincas
+ *   a linha de baixo racha.
  */
+const crystalElements = (c) => c.elements || [c.element];
+const isMixedCrystal = (c) => crystalElements(c).length > 1;
+const crystalWrongHits = () => CRYSTAL_WRONG_HITS;
+
 function breakAdjacentCrystals(cells) {
   const g = state.grid;
-  const hit = new Map(); // id → true se algum match encostado é do mesmo elemento
+  const touched = new Map(); // id → Set de elementos dos matches encostados
   for (const { x, y } of cells) {
     const color = g[y][x].color;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
@@ -2747,24 +2818,62 @@ function breakAdjacentCrystals(cells) {
       if (!isCrystalCell(cell)) continue;
       const c = state.crystals.get(cell.id);
       if (!c || c.breaking) continue;
-      hit.set(c.id, (hit.get(c.id) || false) || color === c.element);
+      if (!touched.has(c.id)) touched.set(c.id, new Set());
+      touched.get(c.id).add(color);
     }
   }
-  if (!hit.size) return;
-  const whole = new Set([...hit].filter(([, same]) => same).map(([id]) => id));
-  const queue = [...whole];
-  while (queue.length) {                       // efeito dominó
+  if (!touched.size) return;
+  const whole = new Set(), row = new Set();
+  for (const [id, colors] of touched) {
+    const c = state.crystals.get(id);
+    const els = crystalElements(c);
+    const own = els.filter(el => colors.has(el));
+    if (own.length) {
+      const left = els.filter(el => !own.includes(el));
+      if (!left.length) { whole.add(id); continue; }
+      // misto: perde a(s) camada(s) dos elementos combinados
+      c.elements = left;
+      c.element = left[0];
+      peelCrystal(c, own);
+      continue;
+    }
+    // só elementos de fora: trinca
+    c.cracks = (c.cracks || 0) + 1;
+    if (c.cracks >= crystalWrongHits(c)) row.add(id);
+    else crackCrystal(c);
+  }
+  const queue = [...whole].filter(id => !isMixedCrystal(state.crystals.get(id)));
+  while (queue.length) {                       // efeito dominó (só entre cristais puros do mesmo elemento)
     const c = state.crystals.get(queue.pop());
     for (const o of state.crystals.values()) {
-      if (whole.has(o.id) || o.breaking || o.element !== c.element || !crystalsTouch(c, o)) continue;
+      if (whole.has(o.id) || o.breaking || isMixedCrystal(o) || o.element !== c.element || !crystalsTouch(c, o)) continue;
       whole.add(o.id);
-      hit.set(o.id, true);
+      row.delete(o.id);
       queue.push(o.id);
     }
   }
-  for (const id of hit.keys()) {
+  for (const id of [...whole, ...row]) {
     state.crystals.get(id).breaking = { all: whole.has(id), timer: clearMs(), total: clearMs() };
   }
+}
+
+/** Camada de elemento removida de um cristal misto: estilhaços da cor que saiu. */
+function peelCrystal(c, removed) {
+  const S = CONFIG.CELL;
+  for (const el of removed) {
+    for (let x = c.x0; x < c.x0 + c.w; x += 2) spawnShards(x * S + S / 2, (c.y0 + c.h / 2) * S, el);
+  }
+  showMessage("CAMADA!");
+  Sound.play("crystalLand");
+}
+
+/** Trinca sem rachar: só retorno visual e sonoro (a trinca aparece desenhada no cristal). */
+function crackCrystal(c) {
+  const S = CONFIG.CELL;
+  const y = c.y0 + c.h - 1;
+  for (let x = c.x0; x < c.x0 + c.w; x += 2) spawnShards(x * S + S / 2, y * S + S * 0.8, c.element);
+  showMessage("TRINCOU!");
+  Sound.play("crystalLand");
 }
 
 /** As casas quebradas viram painéis (gerador com semente) que ficam parados um instante e caem como cadeia. */
@@ -2790,6 +2899,7 @@ function finishCrystalBreak(c) {
   if (c.breaking.all) c.h = Math.max(0, Math.min(c.h, -c.y0));
   else c.h -= 1;
   c.breaking = null;
+  c.cracks = 0;
   c.fallP = 0;
   if (c.h > 0) placeCrystalCells(c);
   else state.crystals.delete(c.id);
@@ -2810,7 +2920,9 @@ function dropCrystal(inc) {
   if (!positions.length) return false; // sem espaço agora: espera na fila
   const x0 = positions[randInt(0, positions.length - 1, state.rng)];
   const id = state.nextCrystalId++;
-  const c = { id, element: inc.element, x0, w: inc.w, y0: 1 - inc.h, h: inc.h, fallP: 0, breaking: null };
+  const elements = inc.elements || [inc.element];
+  const c = { id, element: elements[0], elements, x0, w: inc.w, y0: 1 - inc.h, h: inc.h, fallP: 0,
+              breaking: null, cracks: 0 };
   state.crystals.set(id, c);
   placeCrystalCells(c);
   Sound.play("crystalLand");
@@ -2874,8 +2986,12 @@ function sendAttack() {
     showMessage("CANCELADO!");
   }
   if (!list.length) return;
+  // Combos de elementos diferentes na mesma janela se misturam: cada pedaço
+  // enviado vira um cristal misto com todos esses elementos.
+  const elements = [...new Set([...a.combos, ...(a.chain ? [a.chain] : [])].map(c => c.element))];
   for (const c of list) {
-    state.opponent.incoming.push({ element: c.element, w: c.w, h: c.h, timer: CRYSTAL_DROP_DELAY_MS });
+    const els = elements.length > 1 ? elements : [c.element];
+    state.opponent.incoming.push({ element: els[0], elements: els, w: c.w, h: c.h, timer: CRYSTAL_DROP_DELAY_MS });
   }
   Sound.play("crystalSend");
   if (state.isAI) Sound.play("crystalWarning", { force: true }); // o jogador precisa ouvir o aviso
@@ -2936,7 +3052,7 @@ function aiSnapshot() {
   const g = state.grid;
   const snap = g.map(row => row.map(cell => {
     if (cell === EMPTY) return { c: 0, ch: false };
-    if (isCrystalCell(cell)) return { c: -1, ch: false, el: state.crystals.get(cell.id)?.element };
+    if (isCrystalCell(cell)) { const c = state.crystals.get(cell.id); return { c: -1, ch: false, els: c ? crystalElements(c) : [] }; }
     if (cell.state === PanelState.CLEARING) return { c: 0, ch: false, popping: true };
     return { c: cell.color, ch: cell.chain };
   }));
@@ -3016,7 +3132,7 @@ function simResolve(s, level) {
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = x + dx, ny = y + dy;
         if (nx < 0 || nx >= CONFIG.COLS || ny < 0 || ny >= CONFIG.ROWS || s[ny][nx].c !== -1) continue;
-        score += s[ny][nx].el === color ? 30 : 8;
+        score += s[ny][nx].els.includes(color) ? 30 : 8;
       }
     }
     for (const { x, y } of m) s[y][x] = { c: 0, ch: false };
@@ -3104,8 +3220,30 @@ function aiChooseMove(level) {
   const c = state.cursor;
   for (const m of moves) m.score -= (Math.abs(m.swaps[0].x - c.x) + Math.abs(m.swaps[0].y - c.y)) * 0.3;
   moves.sort((a, b) => b.score - a.score);
-  if (Math.random() < level.errorChance) return moves[Math.floor(Math.random() * Math.min(moves.length, 8))];
+  if (moves[0].score > 0.5 && Math.random() < level.errorChance) {
+    const miss = aiHumanMistake(moves);
+    if (miss) return miss;
+  }
   return moves[0].score > 0.5 ? moves[0] : null;
+}
+
+/**
+ * Erros "de gente": em vez de uma jogada aleatória, a IA
+ * - se contenta com uma jogada modesta (um clear simples de 3) e não enxerga
+ *   o combo ou a cadeia maior que estava disponível; ou
+ * - faz uma troca sem efeito, perto do cursor, como quem se distrai.
+ * Nunca escolhe uma jogada que piora a própria pilha (score negativo).
+ */
+const AI_MISTAKE_FIDGET_SHARE = 0.35; // parte dos erros que são trocas sem efeito
+const AI_MODEST_MAX_SHARE = 0.4;      // jogada "modesta": até 40% do valor da melhor
+function aiHumanMistake(moves) {
+  const best = moves[0].score;
+  const modest = moves.filter(m => m.score > 0.5 && m.score <= best * AI_MODEST_MAX_SHARE);
+  const idle = moves.filter(m => m.swaps.length === 1 && Math.abs(m.score) < 2);
+  const pick = (list) => list[Math.floor(Math.random() * Math.min(list.length, 4))]; // já vêm ordenadas: perto do cursor primeiro
+  if (idle.length && (Math.random() < AI_MISTAKE_FIDGET_SHARE || !modest.length)) return pick(idle);
+  if (modest.length) return pick(modest);
+  return null;
 }
 
 function updateAI(dt) {
@@ -3843,6 +3981,8 @@ function clearingLook(time, timer, total) {
   return { flash: 0.6 * (1 - q), scale: 1 - q * 0.9, alpha: 1 - q };
 }
 
+const BOARD_GRID_COLOR = "rgba(255, 255, 255, 0.06)";
+
 function render() {
   const time = state.clock; // relógio do jogo: congela durante o pause
   const S = CONFIG.CELL;
@@ -3864,8 +4004,8 @@ function render() {
     ctx.fillRect(0, 0, BOARD_W, S * 2);
   }
 
-  // Linhas de fundo (sobem junto com a pilha)
-  ctx.strokeStyle = "#1b1f2c";
+  // Linhas de fundo (sobem junto com a pilha): bem leves, quase imperceptíveis
+  ctx.strokeStyle = BOARD_GRID_COLOR;
   ctx.lineWidth = 1;
   for (let x = 1; x < CONFIG.COLS; x++) line(x * S + 0.5, 0, x * S + 0.5, BOARD_H);
   for (let y = 1; y <= CONFIG.ROWS; y++) {
@@ -3887,7 +4027,7 @@ function render() {
   // Cristais (podem estar entrando pelo topo: a parte de cima fica fora da tela)
   for (const c of state.crystals.values()) {
     const look = c.breaking ? clearingLook(time, c.breaking.timer, c.breaking.total) : null;
-    drawCrystal(c.element, c.x0 * S, (c.y0 + c.fallP) * S - offset, c.w * S, c.h * S, time, look);
+    drawCrystal(c.element, c.x0 * S, (c.y0 + c.fallP) * S - offset, c.w * S, c.h * S, time, look, c);
   }
 
   // Próxima linha surgindo (escurecida, ainda não jogável)
@@ -3911,8 +4051,9 @@ function hexToRgba(hex, a) {
 }
 
 /** Cristal: bloco translúcido com facetas, brilho pulsante e o ícone do elemento. */
-function drawCrystal(element, px, py, w, h, time, look) {
+function drawCrystal(element, px, py, w, h, time, look, crystal) {
   const el = ELEMENTS[element];
+  const els = crystal ? crystalElements(crystal) : [element];
   const pad = 2;
   const x = px + pad, y = py + pad, cw = w - pad * 2, ch = h - pad * 2;
   ctx.save();
@@ -3933,11 +4074,44 @@ function drawCrystal(element, px, py, w, h, time, look) {
   ctx.beginPath();
   ctx.moveTo(x, y); ctx.lineTo(x + cw * 0.55, y); ctx.lineTo(x, y + ch * 0.75); ctx.closePath();
   ctx.fill();
-  // ícone do elemento, translúcido, no centro
-  const icon = Math.min(CONFIG.CELL * 0.95, ch - 6, cw - 6);
-  ctx.globalAlpha = 0.55;
-  ctx.drawImage(sprites[element], x + (cw - icon) / 2, y + (ch - icon) / 2, icon, icon);
+  // misto: faixas diagonais com as cores dos outros elementos
+  if (els.length > 1) {
+    const band = CONFIG.CELL * 0.55;
+    let i = 0;
+    for (let k = -ch; k < cw + ch; k += band, i++) {
+      const other = els[i % els.length];
+      if (other === element) continue;
+      ctx.fillStyle = hexToRgba(ELEMENTS[other].light, 0.45);
+      ctx.beginPath();
+      ctx.moveTo(x + k, y + ch); ctx.lineTo(x + k + band, y + ch);
+      ctx.lineTo(x + k + band + ch, y); ctx.lineTo(x + k + ch, y); ctx.closePath();
+      ctx.fill();
+    }
+  }
+  // ícones dos elementos (camadas) que ainda restam, translúcidos, no centro
+  const icon = Math.min(CONFIG.CELL * 0.95, ch - 6, (cw - 6) / els.length);
+  const startX = x + (cw - icon * els.length) / 2;
+  els.forEach((e, i) => {
+    ctx.globalAlpha = 0.55;
+    ctx.drawImage(sprites[e], startX + i * icon, y + (ch - icon) / 2, icon, icon);
+  });
   ctx.globalAlpha = 1;
+  // trincas na linha de baixo (quantas faltam para rachar)
+  if (crystal && crystal.cracks > 0) {
+    const need = crystalWrongHits(crystal);
+    const rowY = y + ch - CONFIG.CELL + 4;
+    ctx.strokeStyle = "rgba(255,255,255,0.9)";
+    ctx.lineWidth = 1.6;
+    for (let n = 0; n < crystal.cracks; n++) {
+      const cx0 = x + cw * ((n + 0.5) / need);
+      ctx.beginPath();
+      ctx.moveTo(cx0 - 6, rowY);
+      ctx.lineTo(cx0 + 2, rowY + CONFIG.CELL * 0.35);
+      ctx.lineTo(cx0 - 3, rowY + CONFIG.CELL * 0.55);
+      ctx.lineTo(cx0 + 5, ch + y - 2);
+      ctx.stroke();
+    }
+  }
   // brilhos que piscam
   for (let i = 0; i < 3; i++) {
     const t = (time / 900 + i * 0.37) % 1;
@@ -4003,8 +4177,11 @@ function drawIncoming(time) {
   for (const inc of state.incoming.slice(0, 5)) {
     const cw = inc.w * cell, chh = Math.min(inc.h, 6) * cell;
     x -= cw;
-    ctx.fillStyle = ELEMENTS[inc.element].light;
-    ctx.fillRect(x, 13 - chh / 2, cw, chh);
+    const els = inc.elements || [inc.element];
+    els.forEach((e, i) => {
+      ctx.fillStyle = ELEMENTS[e].light;
+      ctx.fillRect(x + (cw * i) / els.length, 13 - chh / 2, cw / els.length, chh);
+    });
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 0.5, 13 - chh / 2 + 0.5, cw - 1, chh - 1);
@@ -4045,7 +4222,9 @@ function drawGrace(time, top) {
 function syncBoardHud(b, hud) {
   const a = b.attack;
   const list = a ? [...a.combos, ...(a.chain ? [a.chain] : [])] : [];
-  const key = list.map(c => `${c.element}:${c.w}x${c.h}`).join("|") || "none";
+  // a prévia já mostra a mistura: com elementos diferentes na janela, todas as peças saem mistas
+  const mixed = [...new Set(list.map(c => c.element))];
+  const key = list.map(c => `${c.element}:${c.w}x${c.h}`).join("|") + (mixed.length > 1 ? "|mix" : "") || "none";
   const mini = hud.querySelector(".crystal-mini");
   if (mini.dataset.key !== key) {
     mini.dataset.key = key;
@@ -4059,7 +4238,8 @@ function syncBoardHud(b, hud) {
         shape.style.gridTemplateColumns = `repeat(${c.w}, 5px)`;
         for (let i = 0; i < c.w * c.h; i++) {
           const cell = document.createElement("i");
-          cell.style.background = hexToRgba(ELEMENTS[c.element].light, 0.9);
+          const e = mixed.length > 1 ? mixed[i % mixed.length] : c.element;
+          cell.style.background = hexToRgba(ELEMENTS[e].light, 0.9);
           shape.appendChild(cell);
         }
         mini.appendChild(shape);
