@@ -39,7 +39,15 @@
     align-items: center;
     justify-content: center;
   }
-  #app { width: 100%; padding: 16px; }
+  #app { width: 100%; padding: 16px; position: relative; z-index: 1; }
+  /* Fundo do bioma: só na partida, transparente e escurecido para os blocos ficarem legíveis */
+  #biomeBg {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: center / cover no-repeat;
+    opacity: 0; transition: opacity .6s ease;
+  }
+  #biomeBg::after { content: ""; position: absolute; inset: 0; background: var(--bg); opacity: var(--biome-bg-shade, .45); }
+  #biomeBg.on { opacity: var(--biome-bg-opacity, .55); }
   .screen { width: 100%; display: flex; justify-content: center; }
 
   /* ---------- Menu / Opções ---------- */
@@ -496,6 +504,7 @@
 </style>
 </head>
 <body>
+<div id="biomeBg" aria-hidden="true"></div>
 <div id="app">
 
   <!-- ======================= MENU PRINCIPAL ======================= -->
@@ -1525,6 +1534,7 @@ function showScreen(name) {
   if (capture) cancelCapture(false);
   currentScreen = name;
   for (const [key, el] of Object.entries(screens)) el.hidden = key !== name;
+  $("biomeBg").classList.toggle("on", name === Screen.GAME && !!match.bgBiome);
   input.keysDown.clear();
   input.padTurbo = false;
   input.turbo = false;
@@ -1606,8 +1616,26 @@ function startMatch() {
     el.textContent = campaign ? "Voltar ao Mapa" : "Voltar ao Menu";
   });
   $("menuBtn").textContent = campaign ? "Mapa" : "Menu";
+  setBiomeBackground();
   restart();
   showScreen(Screen.GAME);
+}
+
+/**
+ * Fundo da partida: na campanha, o do bioma; no Versus e no Endless, um bioma
+ * sorteado (só visual, por isso pode usar Math.random). Se a imagem faltar,
+ * fica o fundo liso de sempre.
+ */
+const BIOME_BG_DIR = "backgrounds/";
+function setBiomeBackground() {
+  const ids = BIOMES.map(b => b.id);
+  match.bgBiome = match.biome?.id || ids[Math.floor(Math.random() * ids.length)];
+  const el = $("biomeBg");
+  const url = `${BIOME_BG_DIR}${match.bgBiome}.webp`;
+  const img = new Image();
+  img.onload = () => { if (match.bgBiome && url.includes(match.bgBiome)) el.style.backgroundImage = `url("${url}")`; };
+  img.onerror = () => { el.style.backgroundImage = "none"; };
+  img.src = url;
 }
 
 /** Sair da partida: Campanha → mapa · Versus → escolha de dificuldade · Endless → Single Player. */
