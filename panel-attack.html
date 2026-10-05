@@ -12,16 +12,19 @@
      STYLE
      ========================================================= */
   :root {
-    --bg: #14161f;
-    --panel: #1e2130;
-    --panel-2: #272b3e;
-    --line: #3a3f58;
+    /* Tema provisório "crepúsculo": índigo/violeta, combina com os fundos quentes e frios.
+       Para trocar a cor do jogo, mude só estas variáveis. */
+    --bg: #15132a;
+    --panel: rgba(38, 32, 82, 0.86);   /* painéis e menus (vidro colorido) */
+    --panel-2: #342d6b;
+    --line: #4d4594;
+    --board-bg: rgba(10, 9, 26, 0.42); /* tabuleiro: deixa o bioma aparecer atrás */
     --text: #e8eaf2;
     --muted: #8a90a8;
     --accent: #ffd84a;
     --danger: #ff5a64;
-    --primary: #4a6cf7;
-    --primary-hover: #5b7bff;
+    --primary: #7356e8;
+    --primary-hover: #8569f5;
     --display: "Lilita One", system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   /* Lilita One só tem um peso: o 800 deixa a fonte reserva em negrito
@@ -103,7 +106,7 @@
   .menu-btn:hover:not(:disabled), .menu-btn:focus-visible {
     outline: none;
     border-color: var(--accent);
-    background: #2f3450;
+    background: #3f3680;
   }
   .menu-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
   .menu-btn.primary:hover, .menu-btn.primary:focus-visible { background: var(--primary-hover); border-color: #fff; }
@@ -115,7 +118,7 @@
     text-transform: uppercase;
     padding: 3px 8px;
     border-radius: 99px;
-    background: #33384f;
+    background: #3d3577;
     color: var(--muted);
   }
   .menu-hint { font-size: 12px; color: var(--muted); }
@@ -156,11 +159,11 @@
     width: 308px;
     max-width: 100%;
     height: auto;
-    background: #0c0e15;
+    background: var(--board-bg);
     border: 3px solid var(--line);
     border-radius: 6px;
   }
-  #board:focus { outline: none; border-color: #5a6390; }
+  #board:focus { outline: none; border-color: #7b6fd0; }
   /* Versus: dois tabuleiros lado a lado, reduzidos em telas estreitas */
   .arena.versus .board-canvas { width: min(308px, calc((100vw - 72px) / 2)); }
   .board-col.p2 .board-canvas { border-color: #6b4a3a; }
@@ -172,6 +175,8 @@
     padding: 6px 8px;
     border-radius: 8px;
     background: var(--panel);
+    backdrop-filter: blur(6px);
+    user-select: none;
   }
   .board-col.p2 .board-hud { flex-direction: row-reverse; text-align: right; }
   .hud-art { position: relative; width: 34px; height: 50px; flex: none; }
@@ -188,7 +193,7 @@
   .crystal-shape { display: grid; gap: 1px; }
   .crystal-shape i { display: block; width: 5px; height: 5px; border-radius: 1px; outline: 1px solid rgba(255,255,255,.6); }
   .crystal-mini.empty { color: var(--muted); font-size: 11px; }
-  .crystal-bar { width: 56px; height: 4px; border-radius: 2px; background: #2c3044; overflow: hidden; }
+  .crystal-bar { width: 56px; height: 4px; border-radius: 2px; background: #2e2860; overflow: hidden; }
   .crystal-bar span { display: block; height: 100%; width: 0; background: var(--accent); }
   @media (max-width: 560px) {
     .hud-art { display: none; }
@@ -217,6 +222,7 @@
   #side {
     width: 210px;
     background: var(--panel);
+    backdrop-filter: blur(6px);
     border-radius: 8px;
     padding: 16px;
   }
@@ -245,10 +251,10 @@
   }
   .side-btn:hover { background: var(--primary-hover); }
   .side-btn.secondary { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); }
-  .side-btn.secondary:hover { background: #2f3450; }
+  .side-btn.secondary:hover { background: #3f3680; }
   .help { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 16px; }
   kbd {
-    background: #2c3044; border: 1px solid #454b66; border-radius: 4px;
+    background: #2e2860; border: 1px solid #5a51a3; border-radius: 4px;
     padding: 0 5px; font-size: 12px; font-family: inherit; color: var(--text);
   }
   .menu-btn kbd { font-weight: 500; }
@@ -377,7 +383,7 @@
     height: 178px;
     overflow: hidden;   /* o desenho nunca invade o cartão vizinho */
   }
-  .char-card:hover, .char-card:focus-visible { outline: none; border-color: var(--accent); background: #2f3450; }
+  .char-card:hover, .char-card:focus-visible { outline: none; border-color: var(--accent); background: #3f3680; }
   .char-card[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
   .char-num {
     position: absolute;
@@ -386,7 +392,7 @@
     min-width: 22px;
     height: 22px;
     border-radius: 11px;
-    background: #14161f;
+    background: var(--bg);
     color: var(--text);
     font-size: 12px;
     font-weight: 700;
@@ -434,7 +440,7 @@
     transform: translate(-50%, -50%);
     border-radius: 50%;
     border: 3px solid var(--accent);
-    background: radial-gradient(circle at 50% 35%, #34395a, var(--panel-2) 70%);
+    background: radial-gradient(circle at 50% 35%, #463d8c, var(--panel-2) 70%);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -3969,6 +3975,8 @@ function clearingLook(time, timer, total) {
   return { flash: 0.6 * (1 - q), scale: 1 - q * 0.9, alpha: 1 - q };
 }
 
+const BOARD_GRID_COLOR = "rgba(255, 255, 255, 0.06)";
+
 function render() {
   const time = state.clock; // relógio do jogo: congela durante o pause
   const S = CONFIG.CELL;
@@ -3990,8 +3998,8 @@ function render() {
     ctx.fillRect(0, 0, BOARD_W, S * 2);
   }
 
-  // Linhas de fundo (sobem junto com a pilha)
-  ctx.strokeStyle = "#1b1f2c";
+  // Linhas de fundo (sobem junto com a pilha): bem leves, quase imperceptíveis
+  ctx.strokeStyle = BOARD_GRID_COLOR;
   ctx.lineWidth = 1;
   for (let x = 1; x < CONFIG.COLS; x++) line(x * S + 0.5, 0, x * S + 0.5, BOARD_H);
   for (let y = 1; y <= CONFIG.ROWS; y++) {
