@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Edição Elemental</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,16 +12,21 @@
      STYLE
      ========================================================= */
   :root {
-    --bg: #14161f;
-    --panel: #1e2130;
-    --panel-2: #272b3e;
-    --line: #3a3f58;
-    --text: #e8eaf2;
-    --muted: #8a90a8;
+    /* Tema provisório "azul bebê": painéis e menus claros, com texto azul-marinho.
+       Para trocar a cor do jogo, mude só estas variáveis. */
+    --bg: #182338;                       /* fundo da página (fora dos painéis) */
+    --panel: rgba(189, 224, 248, 0.95);  /* painéis e menus: azul bebê */
+    --panel-2: #dcf0fd;                  /* botões e campos dentro dos painéis */
+    --panel-hover: #eef8ff;
+    --line: #86bfe6;
+    --text: #1b2b45;
+    --muted: #4d6583;
     --accent: #ffd84a;
+    --accent-text: #9a6200;              /* destaque em texto (dourado escuro, legível no azul bebê) */
     --danger: #ff5a64;
-    --primary: #4a6cf7;
-    --primary-hover: #5b7bff;
+    --primary: #2f7fd8;
+    --primary-hover: #4192ea;
+    --board-bg: rgba(10, 14, 30, 0.80);  /* tabuleiro: escuro, com só um pouco do bioma atrás */
     --display: "Lilita One", system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   /* Lilita One só tem um peso: o 800 deixa a fonte reserva em negrito
@@ -39,7 +44,15 @@
     align-items: center;
     justify-content: center;
   }
-  #app { width: 100%; padding: 16px; }
+  #app { width: 100%; padding: 16px; position: relative; z-index: 1; }
+  /* Fundo do bioma: só na partida, transparente e escurecido para os blocos ficarem legíveis */
+  #biomeBg {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background: center / cover no-repeat;
+    opacity: 0; transition: opacity .6s ease;
+  }
+  #biomeBg::after { content: ""; position: absolute; inset: 0; background: var(--bg); opacity: var(--biome-bg-shade, .12); }
+  #biomeBg.on { opacity: var(--biome-bg-opacity, 1); }
   .screen { width: 100%; display: flex; justify-content: center; }
 
   /* ---------- Menu / Opções ---------- */
@@ -95,7 +108,7 @@
   .menu-btn:hover:not(:disabled), .menu-btn:focus-visible {
     outline: none;
     border-color: var(--accent);
-    background: #2f3450;
+    background: var(--panel-hover);
   }
   .menu-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
   .menu-btn.primary:hover, .menu-btn.primary:focus-visible { background: var(--primary-hover); border-color: #fff; }
@@ -107,7 +120,7 @@
     text-transform: uppercase;
     padding: 3px 8px;
     border-radius: 99px;
-    background: #33384f;
+    background: #c9def0;
     color: var(--muted);
   }
   .menu-hint { font-size: 12px; color: var(--muted); }
@@ -148,15 +161,19 @@
     width: 308px;
     max-width: 100%;
     height: auto;
-    background: #0c0e15;
+    background: var(--board-bg);
     border: 3px solid var(--line);
     border-radius: 6px;
   }
-  #board:focus { outline: none; border-color: #5a6390; }
+  #board:focus { outline: none; border-color: #4f9be0; }
   /* Versus: dois tabuleiros lado a lado, reduzidos em telas estreitas */
   .arena.versus .board-canvas { width: min(308px, calc((100vw - 72px) / 2)); }
   .board-col.p2 .board-canvas { border-color: #6b4a3a; }
   .board-hud {
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    user-select: none;
+    -webkit-user-select: none;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -166,6 +183,7 @@
     background: var(--panel);
   }
   .board-col.p2 .board-hud { flex-direction: row-reverse; text-align: right; }
+  .board-hud.solo { display: none; }
   .hud-art { position: relative; width: 34px; height: 50px; flex: none; }
   .hud-art > * { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); height: 100%; width: auto; max-width: none; }
   .hud-art .char-placeholder { width: 30px; font-size: 14px; border-radius: 14px 14px 6px 6px; }
@@ -180,7 +198,7 @@
   .crystal-shape { display: grid; gap: 1px; }
   .crystal-shape i { display: block; width: 5px; height: 5px; border-radius: 1px; outline: 1px solid rgba(255,255,255,.6); }
   .crystal-mini.empty { color: var(--muted); font-size: 11px; }
-  .crystal-bar { width: 56px; height: 4px; border-radius: 2px; background: #2c3044; overflow: hidden; }
+  .crystal-bar { width: 56px; height: 4px; border-radius: 2px; background: #a9cfee; overflow: hidden; }
   .crystal-bar span { display: block; height: 100%; width: 0; background: var(--accent); }
   @media (max-width: 560px) {
     .hud-art { display: none; }
@@ -191,7 +209,10 @@
     position: absolute;
     inset: 3px;
     border-radius: 4px;
-    background: rgba(8, 9, 14, 0.84);
+    background: rgba(14, 12, 32, 0.84);
+    /* sobre o escuro, o texto volta a ser claro */
+    --text: #eef4fb; --muted: #a9bdd6;
+    color: var(--text);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -203,10 +224,13 @@
   .overlay h2 { font-family: var(--display); font-weight: 400; font-size: 42px; letter-spacing: 1px; margin: 0; }
   .overlay h2.danger { color: var(--danger); }
   .overlay .actions { width: min(230px, 100%); }
+  .overlay .actions { --text: #1b2b45; --muted: #4d6583; color: var(--text); }
   .summary { display: grid; grid-template-columns: repeat(3, auto); gap: 4px 18px; margin: 0; }
   .summary dt { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
   .summary dd { margin: 0; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; grid-row: 2; }
   #side {
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     width: 210px;
     background: var(--panel);
     border-radius: 8px;
@@ -218,10 +242,10 @@
   .stat .value { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .stat.wide { grid-column: 1 / -1; }
   .stat.wide .value { font-size: 32px; }
-  #speed.fast { color: var(--accent); }
+  #speed.fast { color: var(--accent-text); }
   #speed.frenzy { color: var(--danger); }
   #speed.turbo { color: #7fd6ff; }
-  #chainMsg { color: var(--accent); font-weight: 700; min-height: 22px; font-size: 18px; margin-top: 10px; }
+  #chainMsg { color: var(--accent-text); font-weight: 700; min-height: 22px; font-size: 18px; margin-top: 10px; }
   .side-actions { display: flex; gap: 8px; margin-top: 12px; }
   .side-btn {
     flex: 1;
@@ -237,10 +261,10 @@
   }
   .side-btn:hover { background: var(--primary-hover); }
   .side-btn.secondary { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); }
-  .side-btn.secondary:hover { background: #2f3450; }
+  .side-btn.secondary:hover { background: var(--panel-hover); }
   .help { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 16px; }
   kbd {
-    background: #2c3044; border: 1px solid #454b66; border-radius: 4px;
+    background: #a9cfee; border: 1px solid #7fb0d8; border-radius: 4px;
     padding: 0 5px; font-size: 12px; font-family: inherit; color: var(--text);
   }
   .menu-btn kbd { font-weight: 500; }
@@ -252,7 +276,7 @@
     font-weight: 700;
     letter-spacing: 2px;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--accent-text);
     border-bottom: 1px solid var(--line);
     padding-bottom: 6px;
   }
@@ -369,7 +393,7 @@
     height: 178px;
     overflow: hidden;   /* o desenho nunca invade o cartão vizinho */
   }
-  .char-card:hover, .char-card:focus-visible { outline: none; border-color: var(--accent); background: #2f3450; }
+  .char-card:hover, .char-card:focus-visible { outline: none; border-color: var(--accent); background: var(--panel-hover); }
   .char-card[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
   .char-num {
     position: absolute;
@@ -378,7 +402,7 @@
     min-width: 22px;
     height: 22px;
     border-radius: 11px;
-    background: #14161f;
+    background: var(--panel-2);
     color: var(--text);
     font-size: 12px;
     font-weight: 700;
@@ -416,7 +440,7 @@
   .map-wrap { width: 100%; }
   .map { position: relative; width: min(560px, 100%); aspect-ratio: 1; margin: 0 auto; }
   .map-lines { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .map-lines line { stroke: #4b5170; stroke-width: 4; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  .map-lines line { stroke: var(--line); stroke-width: 4; stroke-linecap: round; vector-effect: non-scaling-stroke; }
   .map-center {
     position: absolute;
     left: 50%;
@@ -426,7 +450,7 @@
     transform: translate(-50%, -50%);
     border-radius: 50%;
     border: 3px solid var(--accent);
-    background: radial-gradient(circle at 50% 35%, #34395a, var(--panel-2) 70%);
+    background: radial-gradient(circle at 50% 35%, #ffffff, var(--panel-2) 70%);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -439,6 +463,9 @@
   .hero-art > * { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); height: 100%; }
   .hero-art .char-art { width: auto; max-width: none; }
   .hero-art .char-placeholder { width: auto; aspect-ratio: 1 / 2; font-size: 20px; }
+  /* Mascote escolhido, ao lado do personagem no centro do mapa */
+  .map-mascot { position: absolute; right: 12%; bottom: 31%; width: 30%; height: 30%; pointer-events: none; }
+  .map-center.has-mascot .hero-art > * { left: 40%; }
   .hero-name {
     font-family: var(--display);
     font-size: clamp(14px, 3.6vw, 22px);
@@ -490,12 +517,169 @@
     font-weight: 600;
     z-index: 10;
   }
+  /* ---------- Mascotes ----------
+     Camadas: .mascot (lado/tamanho) › .mascot-react (reação curta) ›
+     .mascot-idle (jeito de cada um, parado) › img. Tempos e tamanhos vêm
+     das constantes MASCOT_* (viram variáveis CSS no boot). */
+  .mascot { position: relative; width: 100%; height: 100%; --dir: 1; --face: 1; --idle-ms: 2000ms; --react-ms: 800ms; }
+  .mascot-react, .mascot-idle { position: absolute; inset: 0; transform-origin: 50% 100%; }
+  .mascot-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%;
+                transform: scaleX(var(--face)); filter: drop-shadow(0 2px 2px rgba(0,0,0,.45)); }
+  .mascot-ph { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); height: 80%; aspect-ratio: 1;
+               border-radius: 50% 50% 42% 42%; background: var(--mc, #667); border: 2px solid rgba(255,255,255,.35);
+               display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 1.1em; }
+  .mascot-shadow { display: none; position: absolute; left: 22%; right: 22%; bottom: -4%; height: 8%; border-radius: 50%;
+                   background: rgba(0,0,0,.35); filter: blur(1px); }
+  .mascot-pop { position: absolute; left: 50%; top: -6%; transform: translateX(-50%); font-family: var(--display);
+                font-size: 15px; color: #ffe35a; text-shadow: 0 2px 0 #7a3b00, 0 0 6px rgba(0,0,0,.6); pointer-events: none;
+                white-space: nowrap; animation: m-pop var(--react-ms) ease-out forwards; }
+  .mascot.locked .mascot-img { animation: none !important; filter: brightness(0) opacity(.55) !important; } /* vence o brilho do idle */
+  .mascot.locked .mascot-ph { background: #111; color: #444; }
+
+  /* Parado (idle): cada mascote com o seu jeito */
+  .mascot[data-id="gotico"] .mascot-idle { animation: m-jelly var(--idle-ms) ease-in-out infinite; }
+  .mascot[data-id="fornalinho"] .mascot-idle { animation: m-impatient var(--idle-ms) ease-out infinite; }
+  .mascot[data-id="fornalinho"] .mascot-img { animation: m-glow-fire calc(var(--idle-ms) * .8) ease-in-out infinite; }
+  .mascot[data-id="seixo"] .mascot-idle { animation: m-breathe var(--idle-ms) ease-in-out infinite; }
+  .mascot[data-id="brisa"] .mascot-idle { animation: m-float var(--idle-ms) ease-in-out infinite; }
+  .mascot[data-id="brisa"] .mascot-shadow { display: block; animation: m-float-shadow var(--idle-ms) ease-in-out infinite; }
+  .mascot[data-id="bonsai"] .mascot-idle { animation: m-sway var(--idle-ms) ease-in-out infinite; }
+  .mascot[data-id="rebite"] .mascot-idle { animation: m-tick var(--idle-ms) infinite; }
+  .mascot[data-id="rebite"] .mascot-img { animation: m-glow-blue calc(var(--idle-ms) * 2) linear infinite; }
+  .mascot[data-react] .mascot-idle, .mascot[data-react] .mascot-img, .mascot[data-react] .mascot-shadow { animation: none; }
+
+  /* Reações (duração em --react-ms) */
+  .mascot[data-react="hop"] .mascot-react { animation: m-hop var(--react-ms) ease-out; }
+  .mascot[data-react="bigjump"] .mascot-react { animation: m-bigjump var(--react-ms) ease-out; }
+  .mascot[data-react="lunge"] .mascot-react { animation: m-lunge var(--react-ms) ease-in-out; }
+  .mascot[data-react="shake"] .mascot-react { animation: m-shake var(--react-ms) linear; }
+  .mascot[data-react="shiver"] .mascot-react { animation: m-shake var(--react-ms) linear infinite; }
+  .mascot[data-react="win"] .mascot-react { animation: m-hop var(--react-ms) ease-out infinite; }
+  .mascot[data-react="lose"] .mascot-react { animation: m-lose var(--react-ms) ease-in forwards; }
+
+  @keyframes m-jelly { 0%, 100% { transform: scale(1, 1); } 25% { transform: scale(1.05, .95); } 50% { transform: scale(.97, 1.03); } 75% { transform: scale(1.02, .98); } }
+  @keyframes m-impatient { 0%, 30%, 60%, 100% { transform: translateY(0) scale(1, 1); } 8%, 38% { transform: translateY(0) scale(1.05, .94); }
+                           15%, 45% { transform: translateY(-9%) scale(.97, 1.04); } 24%, 54% { transform: translateY(0) scale(1.03, .97); } }
+  @keyframes m-glow-fire { 0%, 100% { filter: drop-shadow(0 2px 2px rgba(0,0,0,.45)) drop-shadow(0 0 2px rgba(255,140,30,.3)); }
+                           50% { filter: drop-shadow(0 2px 2px rgba(0,0,0,.45)) drop-shadow(0 0 10px rgba(255,140,30,.95)); } }
+  @keyframes m-breathe { 0%, 100% { transform: scale(1, 1); } 45% { transform: scale(1.02, 1.035); } }
+  @keyframes m-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12%); } }
+  @keyframes m-float-shadow { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(.65); opacity: .55; } }
+  @keyframes m-sway { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
+  @keyframes m-tick { 0%, 18% { transform: rotate(0); } 20%, 38% { transform: rotate(2.5deg); } 40%, 58% { transform: rotate(0); }
+                      60%, 78% { transform: rotate(-2.5deg); } 80%, 100% { transform: rotate(0); } }
+  @keyframes m-glow-blue { 0%, 84%, 92%, 100% { filter: drop-shadow(0 2px 2px rgba(0,0,0,.45)); }
+                           87%, 89% { filter: drop-shadow(0 2px 2px rgba(0,0,0,.45)) drop-shadow(0 0 9px rgba(80,170,255,1)); } }
+  @keyframes m-hop { 0%, 100% { transform: translateY(0) scale(1, 1); } 15% { transform: translateY(0) scale(1.08, .9); }
+                     45% { transform: translateY(-16%) scale(.95, 1.06); } 75% { transform: translateY(0) scale(1.05, .95); } }
+  @keyframes m-bigjump { 0%, 100% { transform: translateY(0) rotate(0) scale(1, 1); } 12% { transform: translateY(0) scale(1.1, .88); }
+                         40% { transform: translateY(-34%) rotate(calc(var(--dir) * -14deg)); } 60% { transform: translateY(-30%) rotate(calc(var(--dir) * 14deg)); }
+                         85% { transform: translateY(0) rotate(0) scale(1.06, .94); } }
+  @keyframes m-lunge { 0%, 100% { transform: translateX(0) scale(1); } 15% { transform: translateX(calc(var(--dir) * -6%)) scale(.96); }
+                       45% { transform: translateX(calc(var(--dir) * var(--lunge))) scale(1.08); } 70% { transform: translateX(calc(var(--dir) * var(--lunge) * .6)); } }
+  @keyframes m-shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-4%) rotate(-1deg); }
+                       20%, 40%, 60%, 80% { transform: translateX(4%) rotate(1deg); } }
+  @keyframes m-lose { to { transform: translateY(10%) scale(.78) rotate(calc(var(--dir) * -8deg)); opacity: .85; } }
+  @keyframes m-pop { 0% { opacity: 0; transform: translate(-50%, 10px) scale(.6); } 20% { opacity: 1; transform: translate(-50%, 0) scale(1.15); }
+                     80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -18px) scale(1); } }
+
+  /* Pausa: tudo congela no lugar */
+  .arena.paused .mascot, .arena.paused .mascot * { animation-play-state: paused !important; }
+
+  /* Onde aparecem */
+  .hud-mascot { position: relative; flex: none; height: var(--mascot-hud-h); width: calc(var(--mascot-hud-h) * 1.1); margin-top: calc(var(--mascot-hud-h) * -0.25); }
+  .mascot-stage { flex: none; align-self: flex-end; width: var(--mascot-solo-w); height: var(--mascot-solo-h); }
+  @media (max-width: 560px) {
+    .hud-mascot { height: var(--mascot-hud-h-narrow); width: calc(var(--mascot-hud-h-narrow) * 1.1); margin-top: 0; }
+    .mascot-stage { width: calc(var(--mascot-solo-w) * .55); height: calc(var(--mascot-solo-h) * .55); }
+  }
+  .biome-mascot { position: absolute; right: -8%; bottom: -8%; width: var(--mascot-map-icon); height: var(--mascot-map-icon);
+                  border-radius: 50%; background: rgba(235, 240, 250, .92); border: 2px solid rgba(0,0,0,.35); padding: 2px;
+                  box-shadow: 0 2px 0 rgba(0,0,0,.35); }
+  .biome-mascot img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .biome-mascot.locked img { filter: brightness(0) opacity(.7); }
+
+  /* Tela de mascotes */
+  .mascot-grid { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 520px) { .mascot-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .mascot-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 8px 8px;
+                 background: var(--panel-2); color: var(--text); border: 2px solid var(--line); border-radius: 10px;
+                 font: inherit; cursor: pointer; min-width: 0; }
+  .mascot-card .mascot-box { width: 100%; height: var(--mascot-card-h); }
+  .mascot-card b { font-family: var(--display); font-size: 16px; letter-spacing: .5px; }
+  .mascot-card small { color: var(--muted); font-size: 12px; line-height: 1.25; text-align: center; }
+  .mascot-card[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--panel-2)); }
+  .mascot-card[aria-disabled="true"] { cursor: default; opacity: .85; }
+  .mascot-card:focus-visible, .mascot-card:hover { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  /* "Novo mascote!" no fim da partida da campanha */
+  .new-mascot { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 10px;
+                background: color-mix(in srgb, #ffd23f 14%, var(--panel)); border: 2px solid #ffd23f; max-width: 100%; }
+  .new-mascot .mascot-box { width: var(--mascot-new-h); height: var(--mascot-new-h); flex: none; }
+  .overlay .new-mascot { --text: #1b2b45; --muted: #4d6583; color: var(--text); }
+  .new-mascot h3 { margin: 0; color: var(--accent-text); font-family: var(--display); font-size: 18px; letter-spacing: 1px; }
+  .new-mascot p { margin: 2px 0 0; font-size: 13px; }
+
+
+  /* ---------- Toque e celular ----------
+     Só muda o jeito de dar o comando: as trocas do toque passam pelo mesmo
+     trySwap do teclado. Os controles de toque só aparecem com body.touch. */
+  #app { padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+                  max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+  .board-canvas { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  .touch-bar, .touch-pause { display: none; }
+  body.touch .touch-bar { display: flex; }
+  body.touch .touch-pause { display: flex; }
+  .touch-raise { flex: 1; min-height: var(--touch-raise-h); border: 0; border-radius: 12px; font: inherit; font-weight: 800;
+                 font-size: 18px; letter-spacing: 1px; color: #fff; background: var(--primary); touch-action: none;
+                 -webkit-user-select: none; user-select: none; box-shadow: inset 0 -4px 0 rgba(0,0,0,.25); }
+  .touch-raise.held { background: #7fd6ff; color: #0b2230; }
+  .touch-pause { position: absolute; top: 8px; right: 8px; z-index: 5; width: 44px; height: 44px; align-items: center;
+                 justify-content: center; border-radius: 10px; border: 1px solid rgba(255,255,255,.3); font-size: 14px;
+                 background: rgba(21,19,42,.7); color: #fff; touch-action: manipulation; }
+  .hud-stats { display: none; }
+  body.touch #gameScreen kbd { display: none; } /* sem teclado: some com as dicas de tecla */
+  body.in-game { overflow: hidden; overscroll-behavior: none; }
+  @media (pointer: coarse) {
+    .menu-btn, .side-btn, .gender-btn, .seg button, .bind-slot { min-height: 44px; }
+  }
+  /* Celular em pé: tabuleiro do jogador quase na largura toda, HUD compacto em cima */
+  @media (max-width: 560px) {
+    body.in-game { align-items: flex-start; }
+    #gameScreen { gap: 8px; }
+    #gameScreen #side { display: none; }
+    .arena { width: 100%; gap: 8px; justify-content: center; }
+    .board-col.p1 { flex: 1 1 auto; }
+    .board-hud.solo { display: flex; }
+    .board-hud.solo .hud-crystal, .board-hud.solo .hud-tag { display: none; }
+    .mascot-stage { display: none; }
+    .board-hud { min-height: 48px; padding: 4px 6px; gap: 6px; }
+    .hud-stats { display: flex; flex-direction: column; align-items: flex-end; margin-left: auto; line-height: 1.1;
+                 font-variant-numeric: tabular-nums; }
+    .hud-time { font-size: 12px; color: var(--muted); }
+    .hud-score { font-size: 18px; font-weight: 800; }
+    .board-col.p1 .hud-crystal { margin-left: 6px; }
+    .board-col.p1 .board-canvas,
+    .arena.versus .board-col.p1 .board-canvas { width: min(calc(100vw - 32px), calc((100dvh - var(--touch-chrome)) / 2)); }
+    .arena.versus .board-col.p1 .board-canvas { width: min(calc((100vw - 40px) * .7), calc((100dvh - var(--touch-chrome)) / 2)); }
+    .arena.versus .board-col.p2 .board-canvas { width: calc((100vw - 40px) * .3); }
+    .board-col.p2 .hud-info, .board-col.p2 .hud-art { display: none; }
+    .board-col.p2 .board-hud { min-height: 48px; padding: 4px; justify-content: center; }
+    .board-col.p2 .crystal-mini { max-width: 60px; }
+    .board-col.p2 .crystal-bar { width: 40px; }
+    .touch-bar { margin-top: 2px; }
+  }
+  /* Movimento reduzido: só troca a expressão, sem pulos nem tremidas */
+  @media (prefers-reduced-motion: reduce) {
+    .mascot, .mascot * { animation: none !important; }
+  }
   @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; }
   }
 </style>
 </head>
 <body>
+<div id="biomeBg" aria-hidden="true"></div>
 <div id="app">
 
   <!-- ======================= MENU PRINCIPAL ======================= -->
@@ -510,6 +694,7 @@
         <button class="menu-btn primary" id="btnSingle">Single Player <span aria-hidden="true">▶</span></button>
         <button class="menu-btn" id="btnVersus">Versus vs IA <span aria-hidden="true">▶</span></button>
         <button class="menu-btn" disabled>Multiplayer <span class="badge">Em breve</span></button>
+        <button class="menu-btn" id="btnMascots">Mascotes <span aria-hidden="true">▶</span></button>
         <button class="menu-btn" id="btnOptions">Opções / Créditos</button>
       </nav>
       <div class="menu-hint" id="menuHint">↑ ↓ para escolher · Enter para confirmar</div>
@@ -604,13 +789,28 @@
           <svg class="map-lines" id="mapLines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
           <div class="map-center" id="mapCenter">
             <div class="hero-art" id="mapHeroArt"></div>
+            <div class="map-mascot" id="mapMascot" hidden></div>
             <div class="hero-name" id="mapHeroName">Humano</div>
           </div>
         </div>
       </div>
       <div class="actions row">
+        <button class="menu-btn" id="btnMapMascot">Mascote <span class="badge" id="mapMascotName">Nenhum</span></button>
         <button class="menu-btn" id="btnNewHero">Novo personagem</button>
         <button class="menu-btn" id="btnMapBack">Voltar <kbd>Esc</kbd></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= MASCOTES ======================= -->
+  <section id="mascotsScreen" class="screen" hidden>
+    <div class="menu-card wide">
+      <h2 class="opt-title">Mascotes</h2>
+      <p class="step-hint">Escolha quem acompanha você nas partidas</p>
+      <div class="mascot-grid" id="mascotGrid"></div>
+      <div class="actions row">
+        <button class="menu-btn" id="btnMascotNone">Nenhum</button>
+        <button class="menu-btn" id="btnMascotsBack">Voltar <kbd>Esc</kbd></button>
       </div>
     </div>
   </section>
@@ -707,7 +907,10 @@
       <div class="board-col p1" id="p1Col">
         <div class="board-hud" id="p1Hud" hidden>
           <div class="hud-art"></div>
+          <div class="hud-mascot" hidden></div>
           <div class="hud-info"><div class="hud-name"></div><div class="hud-tag">Você</div></div>
+          <!-- Celular: tempo e pontos ficam aqui (o painel lateral some) -->
+          <div class="hud-stats"><span class="hud-time" id="hudTime">00:00</span><span class="hud-score" id="hudScore">0</span></div>
           <div class="hud-crystal" title="Cristal sendo montado">
             <div class="crystal-mini"></div>
             <div class="crystal-bar"><span></span></div>
@@ -715,12 +918,18 @@
         </div>
         <div class="board-wrap">
           <canvas id="board" class="board-canvas" tabindex="0" aria-label="Seu tabuleiro"></canvas>
+          <button class="touch-pause" id="touchPause" aria-label="Pausar" data-no-click-sound>❚❚</button>
+        </div>
+        <!-- Toque: tocar sobe uma linha; segurar = turbo -->
+        <div class="touch-bar" id="touchBar">
+          <button class="touch-raise" id="touchRaise" data-no-click-sound>▲ Subir</button>
         </div>
       </div>
       <!-- Tabuleiro da IA (direita, espelhado) -->
       <div class="board-col p2" id="p2Col" hidden>
         <div class="board-hud" id="p2Hud">
           <div class="hud-art"></div>
+          <div class="hud-mascot" hidden></div>
           <div class="hud-info"><div class="hud-name"></div><div class="hud-tag">IA</div></div>
           <div class="hud-crystal" title="Cristal sendo montado">
             <div class="crystal-mini"></div>
@@ -731,6 +940,9 @@
           <canvas id="board2" class="board-canvas" aria-label="Tabuleiro da IA"></canvas>
         </div>
       </div>
+
+      <!-- Endless: o mascote do jogador fica ao lado do tabuleiro -->
+      <div class="mascot-stage" id="soloMascot" hidden></div>
 
       <div class="overlay" id="pauseOverlay" hidden>
         <h2>PAUSADO</h2>
@@ -744,6 +956,10 @@
 
       <div class="overlay" id="gameOverOverlay" hidden>
         <h2 class="danger" id="goTitle">GAME OVER</h2>
+        <div class="new-mascot" id="newMascot" hidden>
+          <div class="mascot-box" id="newMascotArt"></div>
+          <div><h3>Novo mascote!</h3><p><b id="newMascotName"></b>: <span id="newMascotIntro"></span></p></div>
+        </div>
         <dl class="summary">
           <dt>Pontos</dt><dd id="goScore">0</dd>
           <dt>Tempo</dt><dd id="goTime">00:00</dd>
@@ -863,6 +1079,7 @@ const CRYSTAL_COMBO_WINDOW_MS = 1800;            // clears na janela se somam no
 const CRYSTAL_COMBO_WIDTHS = { 4: 3, 5: 4, 6: 5 }; // combo de N painéis → largura (7+ = largura inteira)
 const CRYSTAL_MAX_HEIGHT = 8;                    // cadeia: x2 = 1 linha, cada elo a mais +1, até isto
 const CRYSTAL_DROP_DELAY_MS = 1500;              // tempo na fila (visível) antes de cair
+const CRYSTAL_WRONG_HITS = 4;  // matches de elementos que o cristal não tem até rachar a linha de baixo
 const CRYSTAL_BREAK_POINTS_PER_CELL = 20;
 
 /* ---------- IA ---------- */
@@ -870,10 +1087,59 @@ const CRYSTAL_BREAK_POINTS_PER_CELL = 20;
 // errorChance: chance de escolher uma jogada pior · depth: 1 = só o clear imediato,
 // 2 = simula a cascata (cadeias), 3 = cascata + olha uma segunda troca
 // slide: até quantas casas a IA arrasta um painel numa jogada · turbo: sobe a pilha quando não há jogada
-const AI_LEVELS = {
-  easy:   { label: "Fácil",   moveMs: 220, thinkMs: 560, errorChance: 0.25, depth: 1, slide: 2, turbo: false },
-  normal: { label: "Normal",  moveMs: 120, thinkMs: 220, errorChance: 0.08, depth: 2, slide: 4, turbo: true },
-  hard:   { label: "Difícil", moveMs: 60,  thinkMs: 80,  errorChance: 0.02, depth: 3, slide: 5, turbo: true },
+// IA: o Normal é a referência. Para deixar a IA mais rápida ou mais lenta,
+// mude só o AI_NORMAL; Fácil e Difícil acompanham pelos fatores abaixo.
+const AI_NORMAL = { moveMs: 254, thinkMs: 593, errorChance: 0.15, depth: 2, slide: 3, turbo: true };
+const AI_LEVEL_FACTORS = {
+  easy:   { label: "Fácil",   speed: 2.5, errors: 3.3,  depth: 1, slide: 1, turbo: false },
+  normal: { label: "Normal",  speed: 1,   errors: 1 },
+  hard:   { label: "Difícil", speed: 0.4, errors: 0.15, depth: 3, slide: 5 },
+};
+const AI_LEVELS = Object.fromEntries(Object.entries(AI_LEVEL_FACTORS).map(([id, f]) => {
+  const { speed, errors, ...rest } = f;
+  return [id, { ...AI_NORMAL, ...rest,
+    moveMs: Math.round(AI_NORMAL.moveMs * speed),
+    thinkMs: Math.round(AI_NORMAL.thinkMs * speed),
+    errorChance: Math.min(0.9, AI_NORMAL.errorChance * errors) }];
+}));
+// Erros "de gente" (na chance errorChance de cada nível)
+const AI_MISTAKE_FIDGET_SHARE = 0.35; // parte dos erros que são trocas sem efeito
+const AI_MODEST_MAX_SHARE = 0.4;      // jogada "modesta": até 40% do valor da melhor
+const CAMPAIGN_AI_LEVEL = "easy"; // todos os biomas iniciais usam a mesma dificuldade
+// Toque (celular): só muda o jeito de dar o comando, nunca as regras
+const TOUCH_RAISE_HEIGHT_PX = 64;    // altura do botão "Subir"
+const TOUCH_CHROME_PX = 190;         // espaço vertical reservado ao HUD, botão e margens no celular
+const TOUCH_DRAG_GIVEUP_MS = 300;    // arrasto solto: desiste se a próxima troca não couber nesse tempo
+
+// Fundo da partida (imagem do bioma em backgrounds/<id>.webp)
+const BIOME_BG_DIR = "backgrounds/";
+// Fundos que já existem na pasta (os outros biomas ficam com o fundo liso até a imagem chegar)
+const BIOME_BG_IDS = ["air", "earth", "fire", "forest", "metal", "water"];
+const BIOME_BG_OPACITY = 1;     // quanto a imagem aparece
+const BIOME_BG_SHADE = 0.12;    // escurecimento por cima (o tabuleiro já é escuro)
+
+// Mascotes (só visuais: não mudam regra, velocidade, pontuação nem cristal)
+const MASCOT_DIR = "mascots/";
+const MASCOT_HUD_HEIGHT_PX = 66;         // altura no HUD do Versus/campanha (o personagem tem 50)
+const MASCOT_HUD_HEIGHT_NARROW_PX = 40;  // telas estreitas: só o mascote, pequeno
+const MASCOT_SOLO_WIDTH_PX = 130;        // Endless: mascote ao lado do tabuleiro
+const MASCOT_SOLO_HEIGHT_PX = 130;
+const MASCOT_CARD_HEIGHT_PX = 110;       // tela de Mascotes
+const MASCOT_NEW_HEIGHT_PX = 84;         // "Novo mascote!"
+const MASCOT_MAP_ICON_PX = 30;           // ícone no mapa
+const MASCOT_LUNGE_PERCENT = 22;         // investida: quanto avança na direção do adversário (% da largura)
+// Período do "parado" de cada um (ms)
+const MASCOT_IDLE_MS = { gotico: 1700, fornalinho: 1500, seixo: 4200, brisa: 2600, bonsai: 4600, rebite: 2400 };
+// Reações: prioridade (maior não é interrompida por menor), expressão, animação e duração (ms)
+const MASCOT_REACTIONS = {
+  win:     { prio: 7, expr: "celebrate", anim: "win",     ms: 650,  loop: true },  // até sair da tela
+  lose:    { prio: 7, expr: "scared",    anim: "lose",    ms: 900,  hold: true },  // fica assim
+  danger:  { prio: 6, expr: "scared",    anim: "shiver",  ms: 320,  loop: true },  // enquanto durar o perigo
+  bigChain:{ prio: 5, expr: "celebrate", anim: "bigjump", ms: 1200 },              // cadeia x3+
+  send:    { prio: 4, expr: "angry",     anim: "lunge",   ms: 700 },               // enviou cristal
+  receive: { prio: 3, expr: "scared",    anim: "shake",   ms: 600 },               // cristal caiu no tabuleiro
+  combo:   { prio: 2, expr: "happy",     anim: "hop",     ms: 800 },               // combo 4+ ou cadeia x2
+  crack:   { prio: 1, expr: "happy",     anim: "hop",     ms: 800 },               // quebrou cristal
 };
 // Nomes dos adversários (mesma ordem dos sprites char_01 … char_16)
 const CHARACTER_NAMES = ["Lia", "Bia", "Maya", "Nina", "Duda", "Zuri", "Yumi", "Iara",
@@ -1491,7 +1757,7 @@ function isInDanger() {
    ========================================================= */
 const Screen = {
   MENU: "menu", SINGLE: "single", VERSUS: "versus", CREATE: "create", MAP: "map",
-  OPTIONS: "options", CONTROLS: "controls", GAME: "game",
+  OPTIONS: "options", CONTROLS: "controls", GAME: "game", MASCOTS: "mascots",
 };
 let currentScreen = Screen.MENU;
 let optionsReturn = Screen.MENU; // para onde "Voltar" leva a partir das Opções
@@ -1506,15 +1772,20 @@ const screens = {
   [Screen.CREATE]: $("createScreen"),
   [Screen.MAP]: $("mapScreen"),
   [Screen.GAME]: $("gameScreen"),
+  [Screen.MASCOTS]: $("mascotsScreen"),
 };
 
 function showScreen(name) {
   if (capture) cancelCapture(false);
   currentScreen = name;
   for (const [key, el] of Object.entries(screens)) el.hidden = key !== name;
+  $("biomeBg").classList.toggle("on", name === Screen.GAME && !!match.bgBiome);
   input.keysDown.clear();
   input.padTurbo = false;
   input.turbo = false;
+  input.touchHold = input.touchPulse = false;
+  touch.drag = null;
+  document.body.classList.toggle("in-game", name === Screen.GAME);
   if (name === Screen.MENU) $("btnSingle").focus();
   if (name === Screen.SINGLE) $("btnCampaign").focus();
   if (name === Screen.VERSUS) {
@@ -1528,6 +1799,10 @@ function showScreen(name) {
     screens[Screen.MAP].querySelector(".biome").focus();
   }
   if (name === Screen.OPTIONS) $("optMusicOn").focus();
+  if (name === Screen.MASCOTS) {
+    renderMascotGrid();
+    (screens[Screen.MASCOTS].querySelector('[aria-pressed="true"]') || $("mascotGrid").firstChild).focus();
+  }
   if (name === Screen.CONTROLS) {
     setBindStatus(BIND_STATUS_IDLE);
     renderBindings();
@@ -1554,13 +1829,20 @@ function randomOpponentId() {
   return ids[Math.floor(Math.random() * ids.length)];
 }
 
+/** Versus fora da campanha: mascote aleatório para a IA, diferente do do jogador (só visual). */
+function randomOpponentMascot() {
+  const ids = MASCOTS.map(m => m.id).filter(id => id !== playerMascotId());
+  return ids[Math.floor(Math.random() * ids.length)];
+}
+
 function startEndless(beginner = false) {
   match = { mode: "endless", biome: null, versus: false, aiLevel: settings.aiLevel, opponentId: null, result: null, beginner };
   startMatch();
 }
 
 function startCampaignMatch(biome) {
-  match = { mode: "campaign", biome, versus: true, aiLevel: settings.aiLevel, opponentId: randomOpponentId(), result: null, beginner: false };
+  match = { mode: "campaign", biome, versus: true, aiLevel: CAMPAIGN_AI_LEVEL, opponentId: randomOpponentId(), result: null, beginner: false,
+            opponentMascot: (mascotByBiome(biome.id) || {}).id || null }; // a IA vem com o mascote do bioma
   startMatch();
 }
 
@@ -1568,7 +1850,7 @@ function startVersus(level, beginner = false) {
   settings.aiLevel = level;
   saveSettings();
   match = { mode: "versus", biome: null, versus: true, aiLevel: level, opponentId: randomOpponentId(), result: null,
-            beginner: beginner && level === "easy" };
+            beginner: beginner && level === "easy", opponentMascot: randomOpponentMascot() };
   startMatch();
 }
 
@@ -1590,8 +1872,29 @@ function startMatch() {
     el.textContent = campaign ? "Voltar ao Mapa" : "Voltar ao Menu";
   });
   $("menuBtn").textContent = campaign ? "Mapa" : "Menu";
+  setBiomeBackground();
   restart();
   showScreen(Screen.GAME);
+}
+
+/**
+ * Fundo da partida: na campanha, o do bioma; no Versus e no Endless, um bioma
+ * sorteado (só visual, por isso pode usar Math.random). Se a imagem faltar,
+ * fica o fundo liso de sempre.
+ */
+function setBiomeBackground() {
+  const ids = BIOME_BG_IDS.filter(id => BIOMES.some(b => b.id === id));
+  const chosen = match.biome ? match.biome.id : ids[Math.floor(Math.random() * ids.length)];
+  match.bgBiome = chosen && BIOME_BG_IDS.includes(chosen) ? chosen : null; // sem imagem: fundo liso
+  const el = $("biomeBg");
+  el.style.backgroundImage = "none";
+  if (!match.bgBiome) return;
+  const url = `${BIOME_BG_DIR}${match.bgBiome}.webp`;
+  el.style.backgroundImage = "none";
+  const img = new Image();
+  img.onload = () => { if (match.bgBiome && url.includes(match.bgBiome)) el.style.backgroundImage = `url("${url}")`; };
+  img.onerror = () => { el.style.backgroundImage = "none"; };
+  img.src = url;
 }
 
 /** Sair da partida: Campanha → mapa · Versus → escolha de dificuldade · Endless → Single Player. */
@@ -1626,6 +1929,7 @@ function goBack() {
   else if (currentScreen === Screen.VERSUS) showScreen(Screen.MENU);
   else if (currentScreen === Screen.CREATE) createBack();
   else if (currentScreen === Screen.MAP) showScreen(Screen.SINGLE);
+  else if (currentScreen === Screen.MASCOTS) showScreen(mascotsReturn);
 }
 
 /** Liga um grupo de botões segmentados a uma chave de `settings`. */
@@ -1684,6 +1988,12 @@ $("btnCreateBack").addEventListener("click", createBack);
 $("btnNewHero").addEventListener("click", startCreation);
 $("btnMapBack").addEventListener("click", () => showScreen(Screen.SINGLE));
 $("btnOptions").addEventListener("click", () => openOptions(Screen.MENU));
+let mascotsReturn = Screen.MENU;              // tela para onde "Voltar" leva (menu ou mapa)
+function openMascots(from) { mascotsReturn = from; showScreen(Screen.MASCOTS); }
+$("btnMascots").addEventListener("click", () => openMascots(Screen.MENU));
+$("btnMapMascot").addEventListener("click", () => openMascots(Screen.MAP));
+$("btnMascotsBack").addEventListener("click", () => showScreen(mascotsReturn));
+$("btnMascotNone").addEventListener("click", () => selectMascot(null));
 $("btnOptionsBack").addEventListener("click", closeOptions);
 $("btnControls").addEventListener("click", () => showScreen(Screen.CONTROLS));
 $("btnControlsBack").addEventListener("click", () => showScreen(Screen.OPTIONS));
@@ -1763,6 +2073,226 @@ const SUB_BIOMES = [
 const BIOME_ID_MIGRATIONS = { fungi: "water" };
 const MAP_RADIUS = 36; // distância dos biomas ao centro, em % do mapa
 
+/**
+ * Mascotes: um por bioma. `faces` = para onde a arte olha (1 direita,
+ * -1 esquerda, 0 de frente); na partida, eles viram para o centro da tela.
+ */
+const MASCOTS = [
+  { id: "gotico",     name: "Gotico",     biome: "water",  folder: "gotico",     faces: 0,  color: "#1f7fe0",
+    personality: "Brincalhão e curioso, corpo de água gelatinoso.",
+    intro: "Splash! Bora brincar de cadeia?" },
+  { id: "fornalinho", name: "Fornalinho", biome: "fire",   folder: "fornalinho", faces: 0,  color: "#e8501f",
+    personality: "Esquentadinho e corajoso, tem fogo na barriga.",
+    intro: "Eu cuido do calor. Você cuida dos combos!" },
+  { id: "seixo",      name: "Seixo",      biome: "earth",  folder: "seixo",      faces: 0,  color: "#c4733a",
+    personality: "Calmo, sonolento e leal. Pesado.",
+    intro: "Zzz… ah, oi. Pode contar comigo." },
+  { id: "brisa",      name: "Brisa",      biome: "air",    folder: "brisa",      faces: 0,  color: "#2fb5d9",
+    personality: "Leve e alegre, sempre flutuando.",
+    intro: "Que leveza! Vamos voar juntos!" },
+  { id: "bonsai",     name: "Bonsai",     biome: "forest", folder: "bonsai",     faces: 1,  color: "#2f9e46",
+    personality: "Sábio e paciente. Lento.",
+    intro: "Devagar se vai longe. Eu te acompanho." },
+  { id: "rebite",     name: "Rebite",     biome: "metal",  folder: "rebite",     faces: -1, color: "#7d8a9c",
+    personality: "Orgulhoso e meio rabugento, de corda.",
+    intro: "Hmpf. Me dá corda e eu te sigo." },
+];
+const MASCOT_EXPRESSIONS = ["full", "happy", "angry", "scared", "celebrate"];
+const mascotById = (id) => MASCOTS.find(m => m.id === id) || null;
+const mascotByBiome = (biomeId) => MASCOTS.find(m => m.biome === biomeId) || null;
+const biomeName = (biomeId) => (BIOMES.find(b => b.id === biomeId) || { name: biomeId }).name;
+
+// Pré-carrega todas as imagens; `ok[id][expr]` = false se o arquivo faltar
+const mascotImageOk = {};
+for (const m of MASCOTS) {
+  mascotImageOk[m.id] = {};
+  for (const expr of MASCOT_EXPRESSIONS) {
+    const img = new Image();
+    img.addEventListener("load", () => { mascotImageOk[m.id][expr] = true; });
+    img.addEventListener("error", () => {
+      mascotImageOk[m.id][expr] = false;
+      document.querySelectorAll(`.mascot[data-id="${m.id}"]`).forEach(refreshMascotImage);
+    });
+    img.src = mascotSrc(m, expr);
+  }
+}
+
+function mascotSrc(m, expr) {
+  return `${MASCOT_DIR}${m.folder}/${expr}.webp`;
+}
+
+/**
+ * Cria a figura de um mascote. `dir` = para onde ele olha/avança
+ * (1 direita, -1 esquerda); `locked` = silhueta escura.
+ */
+function mascotFigure(id, { dir = 1, locked = false } = {}) {
+  const m = mascotById(id);
+  const fig = document.createElement("div");
+  fig.className = "mascot" + (locked ? " locked" : "");
+  fig.dataset.id = id;
+  fig.dataset.expr = "full";
+  fig.style.setProperty("--dir", dir);
+  fig.style.setProperty("--face", m.faces === 0 || m.faces === dir ? 1 : -1);
+  fig.style.setProperty("--idle-ms", (MASCOT_IDLE_MS[id] || 2000) + "ms");
+  fig.style.setProperty("--mc", m.color);
+  fig.innerHTML = '<div class="mascot-shadow"></div><div class="mascot-react"><div class="mascot-idle">'
+    + '<img class="mascot-img" alt="" draggable="false"><div class="mascot-ph" hidden></div></div></div>';
+  fig.querySelector(".mascot-ph").textContent = m.name[0];
+  fig.querySelector(".mascot-img").alt = locked ? "" : m.name;
+  refreshMascotImage(fig);
+  return fig;
+}
+
+/** Mostra a expressão atual; se a imagem faltar, usa a pose principal ou um marcador. */
+function refreshMascotImage(fig) {
+  const m = mascotById(fig.dataset.id);
+  const ok = mascotImageOk[m.id];
+  const expr = ok[fig.dataset.expr] === false ? "full" : fig.dataset.expr;
+  const img = fig.querySelector(".mascot-img"), ph = fig.querySelector(".mascot-ph");
+  const missing = ok[expr] === false;
+  img.hidden = missing;
+  ph.hidden = !missing;
+  if (!missing && !img.src.endsWith(mascotSrc(m, expr))) img.src = mascotSrc(m, expr);
+}
+
+function setMascotExpression(fig, expr) {
+  if (fig.dataset.expr === expr) return;
+  fig.dataset.expr = expr;
+  refreshMascotImage(fig);
+}
+
+/* ---------- Mascote na partida (um "view" por tabuleiro) ---------- */
+
+/** Põe um mascote no lugar `host` e devolve o controle dele (ou null se não houver). */
+function createMascotView(host, id, dir) {
+  host.replaceChildren();
+  host.hidden = !id;
+  if (!id) return null;
+  const fig = mascotFigure(id, { dir });
+  host.appendChild(fig);
+  return { fig, figs: [fig], react: null, left: 0, danger: false };
+}
+
+/** Mostra o mesmo mascote em outro lugar, reagindo junto (Endless: HUD do celular + ao lado do tabuleiro). */
+function mirrorMascotView(view, host, id, dir) {
+  const extra = createMascotView(host, id, dir);
+  if (view && extra) view.figs.push(extra.fig);
+  return view || extra;
+}
+
+/**
+ * Dispara uma reação no mascote do tabuleiro em foco (`state`). Chamado
+ * nos mesmos pontos que tocam os sons dos eventos. Uma reação de prioridade
+ * menor não interrompe uma maior que ainda está tocando.
+ */
+function mascotReact(kind, label = "") {
+  const view = state && state.mascotView;
+  if (!view) return;
+  const r = MASCOT_REACTIONS[kind];
+  const cur = view.react && MASCOT_REACTIONS[view.react];
+  if (cur && (cur.hold || (cur.loop && cur.prio === 7) || cur.prio > r.prio)) return;
+  view.react = kind;
+  view.left = r.loop || r.hold ? Infinity : r.ms;
+  for (const fig of view.figs) playMascotAnim(fig, r, label);
+}
+
+function playMascotAnim(fig, r, label) {
+  setMascotExpression(fig, r.expr);
+  fig.style.setProperty("--react-ms", r.ms + "ms");
+  delete fig.dataset.react;
+  void fig.offsetWidth; // reinicia a animação se for a mesma
+  fig.dataset.react = r.anim;
+  fig.querySelector(".mascot-pop")?.remove();
+  if (label) {
+    const pop = document.createElement("span");
+    pop.className = "mascot-pop";
+    pop.textContent = label;
+    fig.appendChild(pop);
+  }
+}
+
+function endMascotReaction(view) {
+  view.react = null;
+  for (const fig of view.figs) {
+    delete fig.dataset.react;
+    fig.querySelector(".mascot-pop")?.remove();
+    setMascotExpression(fig, "full");
+  }
+}
+
+/** A cada frame: perigo contínuo e fim das reações (o tempo para no pause). */
+function updateMascot(dt) {
+  const view = state.mascotView;
+  if (!view || state.paused) return;
+  const danger = !matchOver() && isInDanger();
+  if (danger !== view.danger) {
+    view.danger = danger;
+    if (danger) mascotReact("danger");
+    else if (view.react === "danger") endMascotReaction(view);
+  }
+  if (view.react && Number.isFinite(view.left)) {
+    view.left -= dt;
+    if (view.left <= 0) {
+      endMascotReaction(view);
+      if (view.danger) mascotReact("danger"); // o perigo continua: volta a tremer
+    }
+  }
+}
+
+/** Mascote selecionado pelo jogador (id) ou null. */
+function playerMascotId() {
+  const m = hero && hero.mascot ? mascotByBiome(hero.mascot) : null;
+  return m ? m.id : null;
+}
+
+/* ---------- Tela de Mascotes ---------- */
+
+function renderMascotGrid() {
+  const grid = $("mascotGrid");
+  grid.replaceChildren();
+  const selected = hero ? hero.mascot : null;
+  for (const m of MASCOTS) {
+    const won = !!hero && hero.mascots.includes(m.biome);
+    const b = document.createElement("button");
+    b.className = "mascot-card";
+    b.dataset.biome = m.biome;
+    b.setAttribute("aria-pressed", String(won && selected === m.biome));
+    if (!won) b.setAttribute("aria-disabled", "true");
+    const box = document.createElement("div");
+    box.className = "mascot-box";
+    box.appendChild(mascotFigure(m.id, { locked: !won }));
+    const title = document.createElement("b");
+    title.textContent = won ? m.name : "???";
+    const info = document.createElement("small");
+    info.textContent = won ? `${biomeName(m.biome)} · ${m.personality}` : `Vença o bioma ${biomeName(m.biome)} para conquistar`;
+    b.append(box, title, info);
+    b.setAttribute("aria-label", won ? `${m.name}, ${biomeName(m.biome)}` : `Bloqueado: vença o bioma ${biomeName(m.biome)}`);
+    b.addEventListener("click", () => { if (won) selectMascot(m.biome); });
+    grid.appendChild(b);
+  }
+  $("btnMascotNone").setAttribute("aria-pressed", String(!selected));
+}
+
+/** Escolhe o mascote (bioma) que acompanha o jogador, ou null = nenhum. */
+function selectMascot(biomeId) {
+  if (!hero) { renderMascotGrid(); return; }
+  hero.mascot = biomeId;
+  saveHero();
+  const focused = document.activeElement && document.activeElement.dataset.biome;
+  renderMascotGrid();
+  (focused ? $("mascotGrid").querySelector(`[data-biome="${focused}"]`) : $("btnMascotNone"))?.focus();
+}
+
+/** Vitória na campanha: conquista o mascote do bioma (só na primeira vez). */
+function awardBiomeMascot(biomeId) {
+  const m = mascotByBiome(biomeId);
+  if (!hero || !m || hero.mascots.includes(biomeId)) return null;
+  hero.mascots.push(biomeId);
+  if (!hero.mascot) hero.mascot = biomeId; // o primeiro já fica selecionado
+  saveHero();
+  return m;
+}
+
 let hero = loadHero();                       // personagem salvo (ou null)
 const draft = { gender: null, id: null };    // escolhas durante a criação
 let createStep = "gender";
@@ -1796,7 +2326,13 @@ function migrateHero(h) {
     return v;
   };
   const { name, ...rest } = h; // o nome é texto livre: não mexe
-  return { ...walk(rest), name };
+  const out = { ...walk(rest), name };
+  // Mascotes: saves antigos não têm → nenhum conquistado, nenhum selecionado
+  const known = (b) => typeof b === "string" && !!mascotByBiome(b);
+  out.mascots = Array.isArray(out.mascots) ? [...new Set(out.mascots.filter(known))] : [];
+  const sel = typeof out.mascot === "string" ? (MAP[out.mascot] || out.mascot) : null;
+  out.mascot = sel && out.mascots.includes(sel) ? sel : null;
+  return out;
 }
 
 function saveHero() {
@@ -1886,7 +2422,8 @@ document.querySelectorAll(".gender-btn").forEach(b => b.addEventListener("click"
 $("nameForm").addEventListener("submit", (e) => {
   e.preventDefault();
   const name = $("heroName").value.replace(/\s+/g, " ").trim() || DEFAULT_HERO_NAME;
-  hero = { gender: draft.gender, id: draft.id, name };
+  hero = { gender: draft.gender, id: draft.id, name,
+           mascots: hero ? hero.mascots : [], mascot: hero ? hero.mascot : null }; // mascotes conquistados ficam
   saveHero();
   Sound.play("uiClick");
   showScreen(Screen.MAP);
@@ -1913,6 +2450,17 @@ function buildMap() {
     b.setAttribute("aria-label", `${i + 1}. ${biome.name}${biome.sub ? ` (${biome.sub})` : ""}`);
     b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${biome.icon}</svg>`
       + `<span>${biome.name}</span>${biome.sub ? `<small>(${biome.sub})</small>` : ""}`;
+    const m = mascotByBiome(biome.id);
+    if (m) {
+      const icon = document.createElement("span");
+      icon.className = "biome-mascot";
+      const img = document.createElement("img");
+      img.alt = "";
+      img.src = mascotSrc(m, "full");
+      img.addEventListener("error", () => icon.remove(), { once: true });
+      icon.appendChild(img);
+      b.appendChild(icon);
+    }
     b.addEventListener("click", () => startCampaignMatch(biome));
     mapEl.appendChild(b);
   });
@@ -1922,6 +2470,20 @@ function renderMap() {
   const h = hero || { id: null, name: DEFAULT_HERO_NAME };
   $("mapHeroName").textContent = h.name;
   $("mapHeroArt").replaceChildren(...(h.id ? [characterArt(h.id)] : []));
+  // Mascote escolhido ao lado do personagem (só visual)
+  const mid = playerMascotId();
+  $("mapMascot").hidden = !mid;
+  $("mapCenter").classList.toggle("has-mascot", !!mid);
+  $("mapMascot").replaceChildren(...(mid ? [mascotFigure(mid, { dir: -1 })] : []));
+  $("mapMascotName").textContent = mid ? mascotById(mid).name : "Nenhum";
+  // Mascote do bioma: colorido se já foi conquistado, silhueta se não
+  BIOMES.forEach((biome, i) => {
+    const icon = $("campaignMap").querySelectorAll(".biome")[i].querySelector(".biome-mascot");
+    if (!icon) return;
+    const won = !!hero && hero.mascots.includes(biome.id);
+    icon.classList.toggle("locked", !won);
+    icon.title = won ? mascotByBiome(biome.id).name : "Mascote não conquistado";
+  });
 }
 
 /* =========================================================
@@ -1932,9 +2494,17 @@ function renderMap() {
 const input = {
   keysDown: new Set(), // teclas físicas seguradas agora (para o turbo)
   padTurbo: false,     // turbo segurado no controle
-  turbo: false,        // turbo efetivo (teclado OU controle), atualizado a cada frame
+  turbo: false,        // turbo efetivo (teclado, controle OU toque), atualizado a cada frame
   lastDevice: "keyboard",
+  touchHold: false,    // botão "Subir" segurado
+  touchPulse: false,   // toque curto no "Subir": turbo só até subir uma linha
 };
+
+/** Registra o tipo de controle usado (para o online no futuro: match.input). */
+function noteInput(device) {
+  input.lastDevice = device;
+  if (currentScreen === Screen.GAME && match) match.input = device;
+}
 
 /** Executa uma ação de jogo (vinda do teclado ou do controle). */
 function runAction(action, repeat) {
@@ -1946,7 +2516,7 @@ function runAction(action, repeat) {
 }
 
 document.addEventListener("keydown", (e) => {
-  input.lastDevice = "keyboard";
+  noteInput("keyboard");
   if (capture) { handleCaptureKey(e); return; }
   // Digitando o nome: as teclas são texto (Enter confirma pelo formulário, Esc volta)
   if (e.target instanceof HTMLInputElement && e.target.type === "text") {
@@ -2121,7 +2691,7 @@ function pollGamepad(now) {
   const prev = pad.prev;
   pad.prev = codes;
   const fresh = new Set([...codes].filter(c => !prev.has(c))); // apertados neste frame
-  if (fresh.size) input.lastDevice = "gamepad";
+  if (fresh.size) noteInput("gamepad");
 
   // Remapeamento esperando um botão
   if (capture) {
@@ -2381,6 +2951,122 @@ function moveCursor(dx, dy) {
 }
 
 /* =========================================================
+   TOUCH
+   Pointer Events no tabuleiro do jogador:
+   - tocar sem arrastar → só move o cursor para ali;
+   - arrastar na horizontal → troca o painel com o vizinho, casa por casa,
+     cada casa sendo uma troca normal (trySwap, com as mesmas travas);
+   - vertical não faz nada.
+   Botão "Subir": tocar sobe uma linha, segurar é turbo (as regras do turbo).
+   ========================================================= */
+const touch = { drag: null };
+
+/** Casa do tabuleiro sob o dedo (considera a pilha subindo e o tamanho na tela). */
+function boardCellAt(clientX, clientY) {
+  const r = canvas.getBoundingClientRect();
+  const scale = canvas.clientWidth / BOARD_W;
+  const bx = (clientX - r.left - canvas.clientLeft) / scale;
+  const by = (clientY - r.top - canvas.clientTop) / scale + state.riseProgress * CONFIG.CELL;
+  return {
+    x: Math.max(0, Math.min(CONFIG.COLS - 1, Math.floor(bx / CONFIG.CELL))),
+    y: Math.max(0, Math.min(CONFIG.ROWS - 1, Math.floor(by / CONFIG.CELL))),
+  };
+}
+
+const touchPlayable = () => currentScreen === Screen.GAME && state && !state.paused && !matchOver();
+
+/** Toque ou caneta (o mouse continua como hoje no computador). */
+const isTouchPointer = (e) => e.pointerType === "touch" || e.pointerType === "pen";
+
+function enableTouchUI() {
+  if (!document.body.classList.contains("touch")) document.body.classList.add("touch");
+}
+if (window.matchMedia && matchMedia("(pointer: coarse)").matches) enableTouchUI();
+document.addEventListener("pointerdown", (e) => { if (isTouchPointer(e)) enableTouchUI(); }, { capture: true });
+
+/** Liga os eventos de toque (chamado no boot, depois que o canvas existe). */
+function setupTouch() {
+canvas.addEventListener("pointerdown", (e) => {
+  if (!isTouchPointer(e) || !touchPlayable()) return;
+  e.preventDefault();
+  noteInput("touch");
+  const { x, y } = boardCellAt(e.clientX, e.clientY);
+  // Tocar: o cursor vai para a casa tocada (ele ocupa x e x+1)
+  const c = state.cursor;
+  const before = c.x + "," + c.y;
+  c.x = Math.min(x, CONFIG.COLS - 2);
+  c.y = y;
+  if (c.x + "," + c.y !== before) Sound.play("cursor");
+  const cell = state.grid[y][x];
+  touch.drag = isPanel(cell) ? { id: e.pointerId, row: y, col: x, target: x, panel: cell, held: true, fail: 0 } : null;
+  try { canvas.setPointerCapture(e.pointerId); } catch { /* sem captura */ }
+});
+
+canvas.addEventListener("pointermove", (e) => {
+  const d = touch.drag;
+  if (!d || d.id !== e.pointerId || !d.held) return;
+  e.preventDefault();
+  d.target = boardCellAt(e.clientX, e.clientY).x; // só a coluna importa
+});
+
+for (const type of ["pointerup", "pointercancel"]) {
+  canvas.addEventListener(type, (e) => {
+    if (touch.drag && touch.drag.id === e.pointerId) touch.drag.held = false; // termina as trocas que faltam
+  });
+}
+}
+
+/**
+ * A cada frame: anda o arrasto uma casa por vez. Cada passo posiciona o cursor
+ * e chama trySwap() (a mesma troca do teclado); se a troca não couber agora
+ * (painel ainda trocando, caindo...), tenta no próximo frame.
+ */
+function updateTouch(dt) {
+  const p1 = boards[0];
+  if (p1.grace !== null || matchOver()) input.touchPulse = false;
+  const d = touch.drag;
+  if (!d) return;
+  useBoard(p1);
+  if (!touchPlayable()) { if (matchOver()) touch.drag = null; return; }
+  if (d.col === d.target) { if (!d.held) touch.drag = null; return; }
+  if (state.grid[d.row][d.col] !== d.panel) { touch.drag = null; return; } // o painel caiu/sumiu
+  const dir = Math.sign(d.target - d.col);
+  state.cursor.x = dir > 0 ? d.col : d.col - 1;
+  state.cursor.y = d.row;
+  if (trySwap()) {
+    d.col += dir;
+    d.fail = 0;
+  } else if (!d.held && (d.fail += dt) > TOUCH_DRAG_GIVEUP_MS) {
+    touch.drag = null;
+  }
+}
+
+// Botão "Subir": tocar = uma linha; segurar = turbo
+const raiseBtn = document.getElementById("touchRaise");
+raiseBtn.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  if (!touchPlayable()) return;
+  noteInput("touch");
+  input.touchHold = true;
+  input.touchPulse = true;
+  raiseBtn.classList.add("held");
+  try { raiseBtn.setPointerCapture(e.pointerId); } catch { /* sem captura */ }
+});
+for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
+  raiseBtn.addEventListener(type, () => {
+    input.touchHold = false;
+    raiseBtn.classList.remove("held");
+  });
+}
+raiseBtn.addEventListener("contextmenu", (e) => e.preventDefault());
+
+document.getElementById("touchPause").addEventListener("click", (e) => {
+  noteInput("touch");
+  togglePause();
+  e.currentTarget.blur();
+});
+
+/* =========================================================
    SWAP
    Regras por painel (não pelo tabuleiro inteiro):
    - só painéis PARADOS (idle) ou casas vazias podem ser trocados;
@@ -2517,7 +3203,10 @@ function applyFall(dt) {
       const p = g[y][x];
       if (!isPanel(p)) continue;
       if (p.state === PanelState.IDLE) {
-        if (y < CONFIG.ROWS - 1 && g[y + 1][x] === EMPTY) { p.state = PanelState.FALLING; p.fallP = 0; }
+        // sem apoio: casa vazia embaixo, ou painel que já está caindo (a coluna desce junta,
+        // senão o de baixo pousa sozinho e o de cima fica de fora do match)
+        const under = y < CONFIG.ROWS - 1 ? g[y + 1][x] : "floor"; // última linha: o chão apoia (EMPTY é null)
+        if (under === EMPTY || (isPanel(under) && under.state === PanelState.FALLING)) { p.state = PanelState.FALLING; p.fallP = 0; }
         else continue;
       }
       if (p.state === PanelState.HOVER) {
@@ -2624,6 +3313,8 @@ function resolveMatches() {
     addScore(count, link);
     Sound.play(count >= 5 ? "clear5" : count === 4 ? "clear4" : "clear3");
     if (link >= 2) Sound.play("chain" + Math.min(link, MAX_CHAIN_SOUND));
+    if (link >= 3) mascotReact("bigChain", `x${link}!`);
+    else if (count >= 4 || link >= 2) mascotReact("combo");
     // Pausa da pilha (stop time): combos 4+ e elos de cadeia somam tempo
     if (count >= 4) addStopTime(STOP_TIME_COMBO_BASE_MS + STOP_TIME_COMBO_PER_PANEL_MS * (count - 4));
     if (link >= 2) addStopTime(STOP_TIME_CHAIN_PER_LINK_MS * (link - 1));
@@ -2683,6 +3374,10 @@ function pushRow() {
   state.nextRow = createNextRow(state.rowRng, state.palette);
   // O cursor acompanha os blocos (sobe junto), limitado ao topo
   state.cursor.y = Math.max(0, state.cursor.y - 1);
+  if (!state.isAI) {
+    input.touchPulse = false;                          // toque curto no "Subir": uma linha só
+    if (touch.drag) touch.drag.row = Math.max(0, touch.drag.row - 1); // o painel arrastado subiu junto
+  }
   if (state.ai && state.ai.plan) for (const t of state.ai.plan.swaps) t.y -= 1; // a jogada planejada também subiu
   for (const p of state.particles) p.y -= CONFIG.CELL;
   Sound.play("rise", { volume: 0.7, gap: RISE_SOUND_MIN_GAP_MS });
@@ -2697,8 +3392,15 @@ function gameOver() {
     // Quem estourou perdeu: se foi a IA, o jogador venceu
     match.result = state.isAI ? "win" : "lose";
     Sound.play(state.isAI ? "victory" : "gameOver", { force: true });
+    mascotReact("lose");
+    const loser = state;
+    useBoard(state.opponent);
+    mascotReact("win");
+    useBoard(loser);
+    if (match.mode === "campaign" && match.result === "win") match.newMascot = awardBiomeMascot(match.biome.id);
   } else {
     Sound.play("gameOver");
+    mascotReact("lose");
   }
 }
 
@@ -2729,15 +3431,23 @@ const crystalsTouch = (a, b) => {
       || (yOverlap && (a.x0 + a.w === b.x0 || b.x0 + b.w === a.x0));
 };
 
+const crystalElements = (c) => c.elements || [c.element];
+const isMixedCrystal = (c) => crystalElements(c).length > 1;
+const crystalWrongHits = () => CRYSTAL_WRONG_HITS;
+
 /**
  * Cristais encostados (horizontal/vertical) no clear:
- * - match do MESMO elemento → quebra o cristal inteiro (e, em dominó, os
- *   cristais do mesmo elemento encostados nele);
- * - match de OUTRO elemento → quebra só a linha de baixo.
+ * - match de um elemento que o cristal NÃO tem: soma 1 trinca; com
+ *   CRYSTAL_WRONG_HITS trincas, racha a linha de baixo (puro ou misto);
+ * - PURO (um elemento): match do mesmo elemento quebra o cristal inteiro (e, em
+ *   dominó, os puros do mesmo elemento encostados nele);
+ * - MISTO (ex.: Ar + Fogo): match de Fogo tira a CAMADA de Fogo (some o ícone e as
+ *   listras, sem rachar linha) e o cristal vira só de Ar; aí um match de Ar quebra
+ *   inteiro. Os dois elementos no mesmo clear quebram inteiro direto.
  */
 function breakAdjacentCrystals(cells) {
   const g = state.grid;
-  const hit = new Map(); // id → true se algum match encostado é do mesmo elemento
+  const hit = new Map(); // id → Set das cores dos matches encostados
   for (const { x, y } of cells) {
     const color = g[y][x].color;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
@@ -2747,24 +3457,63 @@ function breakAdjacentCrystals(cells) {
       if (!isCrystalCell(cell)) continue;
       const c = state.crystals.get(cell.id);
       if (!c || c.breaking) continue;
-      hit.set(c.id, (hit.get(c.id) || false) || color === c.element);
+      if (!hit.has(c.id)) hit.set(c.id, new Set());
+      hit.get(c.id).add(color);
     }
   }
   if (!hit.size) return;
-  const whole = new Set([...hit].filter(([, same]) => same).map(([id]) => id));
-  const queue = [...whole];
-  while (queue.length) {                       // efeito dominó
+  const whole = new Set(), bottom = new Set();
+  for (const [id, colors] of hit) {
+    const c = state.crystals.get(id);
+    const els = crystalElements(c);
+    const own = els.filter(el => colors.has(el));
+    if (own.length) {
+      const left = els.filter(el => !own.includes(el));
+      if (!left.length) { whole.add(id); continue; }
+      // misto: perde a(s) camada(s) dos elementos combinados
+      c.elements = left;
+      c.element = left[0];
+      peelCrystal(c, own);
+      continue;
+    }
+    // só elementos de fora: trinca
+    c.cracks = (c.cracks || 0) + 1;
+    if (c.cracks >= crystalWrongHits(c)) bottom.add(id);
+    else crackCrystal(c);
+  }
+  const queue = [...whole].filter(id => !isMixedCrystal(state.crystals.get(id)));
+  while (queue.length) {                       // efeito dominó (só entre cristais puros)
     const c = state.crystals.get(queue.pop());
     for (const o of state.crystals.values()) {
-      if (whole.has(o.id) || o.breaking || o.element !== c.element || !crystalsTouch(c, o)) continue;
+      if (whole.has(o.id) || o.breaking || isMixedCrystal(o) || o.element !== c.element || !crystalsTouch(c, o)) continue;
       whole.add(o.id);
-      hit.set(o.id, true);
+      bottom.delete(o.id);
       queue.push(o.id);
     }
   }
-  for (const id of hit.keys()) {
+  for (const id of whole) bottom.delete(id);
+  for (const id of [...whole, ...bottom]) {
     state.crystals.get(id).breaking = { all: whole.has(id), timer: clearMs(), total: clearMs() };
   }
+}
+
+/** Camada de elemento removida de um cristal misto: estilhaços da cor que saiu. */
+function peelCrystal(c, removed) {
+  const S = CONFIG.CELL;
+  for (const el of removed) {
+    for (let x = c.x0; x < c.x0 + c.w; x += 2) spawnShards(x * S + S / 2, (c.y0 + c.h / 2) * S, el);
+  }
+  showMessage("CAMADA!");
+  Sound.play("crystalLand");
+}
+
+/** Trinca sem rachar: estilhaços pequenos na linha de baixo e aviso. */
+function crackCrystal(c) {
+  const S = CONFIG.CELL;
+  const y = c.y0 + c.h - 1;
+  if (y >= 0) for (let x = c.x0; x < c.x0 + c.w; x++) spawnShards(x * S + S / 2, y * S + S * 0.8, c.element, 2, 0.5);
+  showMessage("TRINCOU!");
+  Sound.play("crystalLand");
 }
 
 /** As casas quebradas viram painéis (gerador com semente) que ficam parados um instante e caem como cadeia. */
@@ -2790,12 +3539,14 @@ function finishCrystalBreak(c) {
   if (c.breaking.all) c.h = Math.max(0, Math.min(c.h, -c.y0));
   else c.h -= 1;
   c.breaking = null;
+  c.cracks = 0; // trincas zeram depois de rachar
   c.fallP = 0;
   if (c.h > 0) placeCrystalCells(c);
   else state.crystals.delete(c.id);
   state.score += cells * CRYSTAL_BREAK_POINTS_PER_CELL;
   showMessage(rows.length > 1 ? "CRISTAL QUEBRADO!" : "CRISTAL RACHOU!");
   Sound.play("crystalBreak");
+  mascotReact("crack");
 }
 
 /** Cristal da fila entra pelo topo, linha por linha, onde houver espaço (nunca mata por "não caber"). */
@@ -2810,10 +3561,13 @@ function dropCrystal(inc) {
   if (!positions.length) return false; // sem espaço agora: espera na fila
   const x0 = positions[randInt(0, positions.length - 1, state.rng)];
   const id = state.nextCrystalId++;
-  const c = { id, element: inc.element, x0, w: inc.w, y0: 1 - inc.h, h: inc.h, fallP: 0, breaking: null };
+  const elements = inc.elements || [inc.element];
+  const c = { id, element: elements[0], elements, cracks: 0,
+              x0, w: inc.w, y0: 1 - inc.h, h: inc.h, fallP: 0, breaking: null };
   state.crystals.set(id, c);
   placeCrystalCells(c);
   Sound.play("crystalLand");
+  mascotReact("receive");
   return true;
 }
 
@@ -2867,6 +3621,10 @@ function sendAttack() {
   const a = state.attack;
   state.attack = null;
   const list = [...a.combos, ...(a.chain ? [a.chain] : [])];
+  // Elementos diferentes na mesma janela: todas as peças viram cristal misto
+  // (a cadeia entra só com o elemento do último elo)
+  const mix = [...new Set(list.map(c => c.element))];
+  if (mix.length > 1) for (const c of list) { c.elements = mix; c.element = mix[0]; }
   const cancel = Math.min(cellsOf(list), cellsOf(state.incoming));
   if (cancel > 0) {
     consumeCells(state.incoming, cancel);
@@ -2875,9 +3633,11 @@ function sendAttack() {
   }
   if (!list.length) return;
   for (const c of list) {
-    state.opponent.incoming.push({ element: c.element, w: c.w, h: c.h, timer: CRYSTAL_DROP_DELAY_MS });
+    state.opponent.incoming.push({ element: c.element, ...(c.elements ? { elements: c.elements } : {}),
+                                   w: c.w, h: c.h, timer: CRYSTAL_DROP_DELAY_MS });
   }
   Sound.play("crystalSend");
+  mascotReact("send");
   if (state.isAI) Sound.play("crystalWarning", { force: true }); // o jogador precisa ouvir o aviso
 }
 
@@ -2894,13 +3654,13 @@ function updateAttack(dt) {
 }
 
 /** Estilhaços de cristal (só visual: usa Math.random, não gasta a semente). */
-function spawnShards(cx, cy, element) {
-  for (let i = 0; i < 5; i++) {
+function spawnShards(cx, cy, element, count = 5, scale = 1) {
+  for (let i = 0; i < count; i++) {
     const a = Math.random() * Math.PI * 2;
     const sp = 0.06 + Math.random() * 0.16;
     state.particles.push({
       x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 0.12,
-      life: 0, max: 520 + Math.random() * 300, size: 3 + Math.random() * 4, rot: Math.random() * 6, element,
+      life: 0, max: 520 + Math.random() * 300, size: (3 + Math.random() * 4) * scale, rot: Math.random() * 6, element,
     });
   }
 }
@@ -2936,7 +3696,10 @@ function aiSnapshot() {
   const g = state.grid;
   const snap = g.map(row => row.map(cell => {
     if (cell === EMPTY) return { c: 0, ch: false };
-    if (isCrystalCell(cell)) return { c: -1, ch: false, el: state.crystals.get(cell.id)?.element };
+    if (isCrystalCell(cell)) {
+      const c = state.crystals.get(cell.id);
+      return { c: -1, ch: false, els: c ? crystalElements(c) : [] };
+    }
     if (cell.state === PanelState.CLEARING) return { c: 0, ch: false, popping: true };
     return { c: cell.color, ch: cell.chain };
   }));
@@ -3016,7 +3779,7 @@ function simResolve(s, level) {
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = x + dx, ny = y + dy;
         if (nx < 0 || nx >= CONFIG.COLS || ny < 0 || ny >= CONFIG.ROWS || s[ny][nx].c !== -1) continue;
-        score += s[ny][nx].el === color ? 30 : 8;
+        score += s[ny][nx].els.includes(color) ? 30 : 8;
       }
     }
     for (const { x, y } of m) s[y][x] = { c: 0, ch: false };
@@ -3104,8 +3867,28 @@ function aiChooseMove(level) {
   const c = state.cursor;
   for (const m of moves) m.score -= (Math.abs(m.swaps[0].x - c.x) + Math.abs(m.swaps[0].y - c.y)) * 0.3;
   moves.sort((a, b) => b.score - a.score);
-  if (Math.random() < level.errorChance) return moves[Math.floor(Math.random() * Math.min(moves.length, 8))];
+  if (moves[0].score > 0.5 && Math.random() < level.errorChance) {
+    const miss = aiHumanMistake(moves);
+    if (miss) return miss;
+  }
   return moves[0].score > 0.5 ? moves[0] : null;
+}
+
+/**
+ * Erros "de gente": em vez de uma jogada aleatória, a IA
+ * - se contenta com uma jogada modesta (um clear simples de 3) e não enxerga
+ *   o combo ou a cadeia maior que estava disponível; ou
+ * - faz uma troca sem efeito, perto do cursor, como quem se distrai.
+ * Nunca escolhe uma jogada que piora a própria pilha.
+ */
+function aiHumanMistake(moves) {
+  const best = moves[0].score;
+  const modest = moves.filter(m => m.score > 0.5 && m.score <= best * AI_MODEST_MAX_SHARE);
+  const idle = moves.filter(m => m.swaps.length === 1 && Math.abs(m.score) < 2);
+  const pick = (list) => list[Math.floor(Math.random() * Math.min(list.length, 4))]; // ordenadas: perto do cursor primeiro
+  if (idle.length && (Math.random() < AI_MISTAKE_FIDGET_SHARE || !modest.length)) return pick(idle);
+  if (modest.length) return pick(modest);
+  return null;
 }
 
 function updateAI(dt) {
@@ -3179,6 +3962,7 @@ function showBanner(text) {
    UPDATE (lógica por frame, por tabuleiro)
    ========================================================= */
 function update(dt) {
+  updateMascot(dt);
   // Pausado: nada avança (pilha, cronômetro, animações, cadeias, avisos)
   if (state.paused) return;
   state.clock += dt;
@@ -3811,6 +4595,9 @@ const ui = {
   arena: $("arena"),
   p2Col: $("p2Col"),
   huds: [$("p1Hud"), $("p2Hud")],
+  soloMascot: $("soloMascot"),
+  hudTime: $("hudTime"),
+  hudScore: $("hudScore"),
 };
 
 function formatTime(ms) {
@@ -3843,6 +4630,8 @@ function clearingLook(time, timer, total) {
   return { flash: 0.6 * (1 - q), scale: 1 - q * 0.9, alpha: 1 - q };
 }
 
+const BOARD_GRID_COLOR = "rgba(255, 255, 255, 0.06)"; // quadriculado quase imperceptível
+
 function render() {
   const time = state.clock; // relógio do jogo: congela durante o pause
   const S = CONFIG.CELL;
@@ -3865,7 +4654,7 @@ function render() {
   }
 
   // Linhas de fundo (sobem junto com a pilha)
-  ctx.strokeStyle = "#1b1f2c";
+  ctx.strokeStyle = BOARD_GRID_COLOR;
   ctx.lineWidth = 1;
   for (let x = 1; x < CONFIG.COLS; x++) line(x * S + 0.5, 0, x * S + 0.5, BOARD_H);
   for (let y = 1; y <= CONFIG.ROWS; y++) {
@@ -3887,7 +4676,7 @@ function render() {
   // Cristais (podem estar entrando pelo topo: a parte de cima fica fora da tela)
   for (const c of state.crystals.values()) {
     const look = c.breaking ? clearingLook(time, c.breaking.timer, c.breaking.total) : null;
-    drawCrystal(c.element, c.x0 * S, (c.y0 + c.fallP) * S - offset, c.w * S, c.h * S, time, look);
+    drawCrystal(c, c.x0 * S, (c.y0 + c.fallP) * S - offset, c.w * S, c.h * S, time, look);
   }
 
   // Próxima linha surgindo (escurecida, ainda não jogável)
@@ -3910,8 +4699,14 @@ function hexToRgba(hex, a) {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-/** Cristal: bloco translúcido com facetas, brilho pulsante e o ícone do elemento. */
-function drawCrystal(element, px, py, w, h, time, look) {
+/**
+ * Cristal: bloco translúcido com facetas, brilho pulsante e o ícone do elemento.
+ * Misto: faixas diagonais com as cores dos outros elementos e os ícones de todos
+ * (as camadas tiradas já saíram de `elements`). Trincas: zigue-zagues brancos na linha de baixo.
+ */
+function drawCrystal(c, px, py, w, h, time, look) {
+  const element = c.element;
+  const els = crystalElements(c);
   const el = ELEMENTS[element];
   const pad = 2;
   const x = px + pad, y = py + pad, cw = w - pad * 2, ch = h - pad * 2;
@@ -3928,16 +4723,46 @@ function drawCrystal(element, px, py, w, h, time, look) {
   ctx.strokeStyle = "rgba(255,255,255,0.22)";
   ctx.lineWidth = 1.5;
   for (let k = -ch; k < cw; k += CONFIG.CELL * 0.8) line(x + k, y + ch, x + k + ch, y);
+  // misto: faixas diagonais com as cores dos outros elementos
+  if (els.length > 1) {
+    const band = CONFIG.CELL * 0.55;
+    ctx.lineWidth = band * 0.5;
+    let k = 0;
+    for (let d = -ch; d < cw + ch; d += band) {
+      const other = els[1 + (k++ % (els.length - 1))];
+      ctx.strokeStyle = hexToRgba(ELEMENTS[other].light, 0.45);
+      line(x + d, y + ch, x + d + ch, y);
+    }
+  }
   // reflexo grande no canto superior esquerdo
   ctx.fillStyle = "rgba(255,255,255,0.20)";
   ctx.beginPath();
   ctx.moveTo(x, y); ctx.lineTo(x + cw * 0.55, y); ctx.lineTo(x, y + ch * 0.75); ctx.closePath();
   ctx.fill();
-  // ícone do elemento, translúcido, no centro
-  const icon = Math.min(CONFIG.CELL * 0.95, ch - 6, cw - 6);
-  ctx.globalAlpha = 0.55;
-  ctx.drawImage(sprites[element], x + (cw - icon) / 2, y + (ch - icon) / 2, icon, icon);
+  // ícone(s) do elemento, translúcidos, no centro (misto: lado a lado; camadas tiradas já saíram)
+  const icon = Math.min(CONFIG.CELL * 0.95, ch - 6, (cw - 6) / els.length);
+  els.forEach((e, i) => {
+    ctx.globalAlpha = 0.55;
+    const ix = x + (cw - icon * els.length) / 2 + i * icon;
+    ctx.drawImage(sprites[e], ix, y + (ch - icon) / 2, icon, icon);
+  });
   ctx.globalAlpha = 1;
+  // trincas: uma linha em zigue-zague por trinca na linha de baixo
+  const cracks = c.cracks || 0;
+  if (cracks > 0) {
+    const rowTop = y + ch - (CONFIG.CELL - pad * 2), rowH = CONFIG.CELL - pad * 2;
+    ctx.strokeStyle = "rgba(255,255,255,0.9)";
+    ctx.lineWidth = 1.6;
+    ctx.lineJoin = "miter";
+    const step = cw / (crystalWrongHits(c) + 1);
+    for (let t = 1; t <= cracks; t++) {
+      const cx = x + step * t;
+      ctx.beginPath();
+      ctx.moveTo(cx, rowTop + rowH);
+      for (let j = 1; j <= 4; j++) ctx.lineTo(cx + (j % 2 ? 5 : -4), rowTop + rowH - (rowH * 0.8 * j) / 4);
+      ctx.stroke();
+    }
+  }
   // brilhos que piscam
   for (let i = 0; i < 3; i++) {
     const t = (time / 900 + i * 0.37) % 1;
@@ -4003,8 +4828,12 @@ function drawIncoming(time) {
   for (const inc of state.incoming.slice(0, 5)) {
     const cw = inc.w * cell, chh = Math.min(inc.h, 6) * cell;
     x -= cw;
-    ctx.fillStyle = ELEMENTS[inc.element].light;
-    ctx.fillRect(x, 13 - chh / 2, cw, chh);
+    const els = inc.elements || [inc.element];   // misto: a cor dividida entre os elementos
+    els.forEach((e, i) => {
+      const a = Math.round((cw * i) / els.length), b = Math.round((cw * (i + 1)) / els.length);
+      ctx.fillStyle = ELEMENTS[e].light;
+      ctx.fillRect(x + a, 13 - chh / 2, b - a, chh);
+    });
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 0.5, 13 - chh / 2 + 0.5, cw - 1, chh - 1);
@@ -4045,7 +4874,10 @@ function drawGrace(time, top) {
 function syncBoardHud(b, hud) {
   const a = b.attack;
   const list = a ? [...a.combos, ...(a.chain ? [a.chain] : [])] : [];
-  const key = list.map(c => `${c.element}:${c.w}x${c.h}`).join("|") || "none";
+  const pieceEls = (c) => c.elements || [c.element];
+  const mixed = new Set(list.map(c => c.element)).size > 1; // vai virar cristal misto ao enviar
+  const mixEls = [...new Set(list.map(c => c.element))];
+  const key = (list.map(c => `${pieceEls(c).join("+")}:${c.w}x${c.h}`).join("|") + (mixed ? "|mix" : "")) || "none";
   const mini = hud.querySelector(".crystal-mini");
   if (mini.dataset.key !== key) {
     mini.dataset.key = key;
@@ -4059,7 +4891,8 @@ function syncBoardHud(b, hud) {
         shape.style.gridTemplateColumns = `repeat(${c.w}, 5px)`;
         for (let i = 0; i < c.w * c.h; i++) {
           const cell = document.createElement("i");
-          cell.style.background = hexToRgba(ELEMENTS[c.element].light, 0.9);
+          const els = mixed ? mixEls : pieceEls(c);
+          cell.style.background = hexToRgba(ELEMENTS[els[i % els.length]].light, 0.9);
           shape.appendChild(cell);
         }
         mini.appendChild(shape);
@@ -4076,6 +4909,8 @@ function setupBoardHud(b, hud) {
   hud.querySelector(".hud-name").textContent = b.name;
   const art = hud.querySelector(".hud-art");
   art.replaceChildren(...(b.characterId ? [characterArt(b.characterId)] : []));
+  // Mascote ao lado do personagem, virado para o centro (jogador → direita, IA → esquerda)
+  b.mascotView = createMascotView(hud.querySelector(".hud-mascot"), b.mascotId, b.isAI ? -1 : 1);
   const mini = hud.querySelector(".crystal-mini");
   delete mini.dataset.key;
 }
@@ -4084,6 +4919,8 @@ function setupBoardHud(b, hud) {
 function syncHud() {
   ui.timer.textContent = formatTime(state.elapsedMs);
   ui.score.textContent = state.score;
+  ui.hudTime.textContent = ui.timer.textContent;
+  ui.hudScore.textContent = state.score;
   ui.bestChain.textContent = state.bestChain;
   const rowsPerMin = 60000 / currentRiseIntervalMs();
   ui.speed.textContent = rowsPerMin < 10 ? rowsPerMin.toFixed(1) : Math.round(rowsPerMin);
@@ -4104,6 +4941,15 @@ function syncHud() {
       const title = !match.versus ? "GAME OVER" : match.result === "win" ? "VITÓRIA!" : "DERROTA";
       ui.goTitle.textContent = title;
       ui.goTitle.className = match.versus && match.result === "win" ? "win" : "danger";
+      const nm = match.newMascot;
+      $("newMascot").hidden = !nm;
+      if (nm) {
+        $("newMascotArt").replaceChildren(mascotFigure(nm.id));
+        $("newMascotArt").firstChild.dataset.expr = "celebrate";
+        refreshMascotImage($("newMascotArt").firstChild);
+        $("newMascotName").textContent = nm.name;
+        $("newMascotIntro").textContent = nm.intro;
+      }
       ui.goScore.textContent = state.score;
       ui.goTime.textContent = formatTime(state.elapsedMs);
       ui.goChain.textContent = state.bestChain;
@@ -4210,12 +5056,14 @@ function loop(time) {
 
   pollGamepad(time);
   const keyboardTurbo = bindings.keyboard.turbo.some(c => c && input.keysDown.has(c));
-  input.turbo = currentScreen === Screen.GAME && (keyboardTurbo || input.padTurbo);
+  input.turbo = currentScreen === Screen.GAME && (keyboardTurbo || input.padTurbo || input.touchHold || input.touchPulse);
+  if (currentScreen === Screen.GAME && boards.length) updateTouch(dt);
 
   if (currentScreen === Screen.GAME && boards.length) {
     for (const b of boards) { useBoard(b); update(dt); }
     for (const b of boards) { useBoard(b); render(); }
     useBoard(boards[0]);           // fora do loop, `state` é sempre o jogador
+    ui.arena.classList.toggle("paused", state.paused && !matchOver()); // congela os mascotes
     syncHud();
     if (match.versus) boards.forEach((b, i) => syncBoardHud(b, ui.huds[i]));
   }
@@ -4255,12 +5103,20 @@ function restart() {
     boards.push(cpu);
   }
   match.result = null;
+  match.newMascot = null;
+  player.mascotId = playerMascotId();
+  if (boards[1]) boards[1].mascotId = match.opponentMascot || null;
   useBoard(player);
   // Layout: um tabuleiro (solo) ou dois espelhados (Versus)
   ui.arena.classList.toggle("versus", match.versus);
   ui.p2Col.hidden = !match.versus;
-  ui.huds[0].hidden = !match.versus;
+  ui.huds[0].hidden = false;
+  ui.huds[0].classList.toggle("solo", !match.versus); // Endless: só aparece no celular (CSS)
+  match.input = input.lastDevice;
   boards.forEach((b, i) => setupBoardHud(b, ui.huds[i]));
+  // Endless: sem HUD; o mascote fica ao lado do tabuleiro
+  if (match.versus) createMascotView(ui.soloMascot, null);
+  else player.mascotView = mirrorMascotView(player.mascotView, ui.soloMascot, player.mascotId, 1);
   Sound.stopMusic(); // a música recomeça do início
 }
 
@@ -4269,6 +5125,17 @@ document.title = GAME_TITLE;
 $("gameTitle").textContent = GAME_TITLE;
 document.querySelectorAll(".credits-title").forEach(el => { el.textContent = GAME_TITLE; });
 
+// Tamanhos dos mascotes (constantes MASCOT_*) viram variáveis CSS
+for (const [k, v] of Object.entries({
+  "--mascot-hud-h": MASCOT_HUD_HEIGHT_PX + "px", "--mascot-hud-h-narrow": MASCOT_HUD_HEIGHT_NARROW_PX + "px",
+  "--mascot-solo-w": MASCOT_SOLO_WIDTH_PX + "px", "--mascot-solo-h": MASCOT_SOLO_HEIGHT_PX + "px",
+  "--mascot-card-h": MASCOT_CARD_HEIGHT_PX + "px", "--mascot-new-h": MASCOT_NEW_HEIGHT_PX + "px",
+  "--mascot-map-icon": MASCOT_MAP_ICON_PX + "px", "--lunge": MASCOT_LUNGE_PERCENT + "%",
+  "--biome-bg-opacity": BIOME_BG_OPACITY, "--biome-bg-shade": BIOME_BG_SHADE,
+  "--touch-raise-h": TOUCH_RAISE_HEIGHT_PX + "px", "--touch-chrome": TOUCH_CHROME_PX + "px",
+})) document.documentElement.style.setProperty(k, v);
+
+setupTouch();
 renderMenuTiles();
 buildMap();
 renderHelp();
