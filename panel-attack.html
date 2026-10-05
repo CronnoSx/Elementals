@@ -866,8 +866,7 @@ const CRYSTAL_DROP_DELAY_MS = 1500;              // tempo na fila (visível) ant
 const CRYSTAL_BREAK_POINTS_PER_CELL = 20;
 // Resistência a matches de OUTRO elemento: quantas trincas racham a linha de baixo.
 // Cada match encostado conta 1 trinca (cada elo de uma cadeia é um match).
-const CRYSTAL_WRONG_HITS_PURE = 2;   // cristal de um elemento só
-const CRYSTAL_WRONG_HITS_MIXED = 4;  // cristal misto (o dobro)
+const CRYSTAL_WRONG_HITS = 4;
 
 /* ---------- IA ---------- */
 // moveMs: tempo entre passos do cursor · thinkMs: pausa entre decisões
@@ -2755,20 +2754,17 @@ const crystalsTouch = (a, b) => {
 
 /**
  * Cristais encostados (horizontal/vertical) no clear.
- * Cristal puro (um elemento):
- * - match do MESMO elemento → quebra inteiro (e, em dominó, os cristais
- *   puros do mesmo elemento encostados nele);
- * - match de OUTRO elemento → 1 trinca; com CRYSTAL_WRONG_HITS_PURE trincas
- *   a linha de baixo racha.
- * Cristal misto (feito com combos de elementos diferentes na mesma janela):
- * - match de um dos SEUS elementos → racha a linha de baixo e marca o
- *   elemento; quando todos os elementos dele foram usados, quebra inteiro;
- * - match de OUTRO elemento → 1 trinca; com CRYSTAL_WRONG_HITS_MIXED trincas
+ * - Match de um elemento DO cristal:
+ *   · cristal de um elemento só → quebra inteiro (e, em dominó, os cristais
+ *     de um elemento só, do mesmo elemento, encostados nele);
+ *   · cristal misto → perde a camada desse elemento (o ícone some e ele
+ *     passa a ser só dos elementos que sobraram). Sem camadas, quebra inteiro.
+ * - Match só de OUTROS elementos → 1 trinca; com CRYSTAL_WRONG_HITS trincas
  *   a linha de baixo racha.
  */
 const crystalElements = (c) => c.elements || [c.element];
 const isMixedCrystal = (c) => crystalElements(c).length > 1;
-const crystalWrongHits = (c) => isMixedCrystal(c) ? CRYSTAL_WRONG_HITS_MIXED : CRYSTAL_WRONG_HITS_PURE;
+const crystalWrongHits = () => CRYSTAL_WRONG_HITS;
 
 function breakAdjacentCrystals(cells) {
   const g = state.grid;
@@ -2790,13 +2786,15 @@ function breakAdjacentCrystals(cells) {
   const whole = new Set(), row = new Set();
   for (const [id, colors] of touched) {
     const c = state.crystals.get(id);
-    const own = crystalElements(c).filter(el => colors.has(el));
-    if (!isMixedCrystal(c)) {
-      if (own.length) { whole.add(id); continue; }
-    } else if (own.length) {
-      c.solved = [...new Set([...(c.solved || []), ...own])];
-      if (crystalElements(c).every(el => c.solved.includes(el))) whole.add(id);
-      else row.add(id);
+    const els = crystalElements(c);
+    const own = els.filter(el => colors.has(el));
+    if (own.length) {
+      const left = els.filter(el => !own.includes(el));
+      if (!left.length) { whole.add(id); continue; }
+      // misto: perde a(s) camada(s) dos elementos combinados
+      c.elements = left;
+      c.element = left[0];
+      peelCrystal(c, own);
       continue;
     }
     // só elementos de fora: trinca
@@ -2817,6 +2815,16 @@ function breakAdjacentCrystals(cells) {
   for (const id of [...whole, ...row]) {
     state.crystals.get(id).breaking = { all: whole.has(id), timer: clearMs(), total: clearMs() };
   }
+}
+
+/** Camada de elemento removida de um cristal misto: estilhaços da cor que saiu. */
+function peelCrystal(c, removed) {
+  const S = CONFIG.CELL;
+  for (const el of removed) {
+    for (let x = c.x0; x < c.x0 + c.w; x += 2) spawnShards(x * S + S / 2, (c.y0 + c.h / 2) * S, el);
+  }
+  showMessage("CAMADA!");
+  Sound.play("crystalLand");
 }
 
 /** Trinca sem rachar: só retorno visual e sonoro (a trinca aparece desenhada no cristal). */
@@ -2874,7 +2882,7 @@ function dropCrystal(inc) {
   const id = state.nextCrystalId++;
   const elements = inc.elements || [inc.element];
   const c = { id, element: elements[0], elements, x0, w: inc.w, y0: 1 - inc.h, h: inc.h, fallP: 0,
-              breaking: null, cracks: 0, solved: [] };
+              breaking: null, cracks: 0 };
   state.crystals.set(id, c);
   placeCrystalCells(c);
   Sound.play("crystalLand");
@@ -4038,11 +4046,11 @@ function drawCrystal(element, px, py, w, h, time, look, crystal) {
       ctx.fill();
     }
   }
-  // ícones dos elementos, translúcidos, no centro (os já usados num misto ficam apagados)
+  // ícones dos elementos (camadas) que ainda restam, translúcidos, no centro
   const icon = Math.min(CONFIG.CELL * 0.95, ch - 6, (cw - 6) / els.length);
   const startX = x + (cw - icon * els.length) / 2;
   els.forEach((e, i) => {
-    ctx.globalAlpha = crystal && crystal.solved && crystal.solved.includes(e) ? 0.18 : 0.55;
+    ctx.globalAlpha = 0.55;
     ctx.drawImage(sprites[e], startX + i * icon, y + (ch - icon) / 2, icon, icon);
   });
   ctx.globalAlpha = 1;
