@@ -12,19 +12,21 @@
      STYLE
      ========================================================= */
   :root {
-    /* Tema provisório "crepúsculo": índigo/violeta, combina com os fundos quentes e frios.
+    /* Tema provisório "azul bebê": painéis e menus claros, com texto azul-marinho.
        Para trocar a cor do jogo, mude só estas variáveis. */
-    --bg: #15132a;
-    --panel: rgba(38, 32, 82, 0.86);   /* painéis e menus (vidro colorido) */
-    --panel-2: #342d6b;
-    --line: #4d4594;
-    --board-bg: rgba(10, 9, 26, 0.42); /* tabuleiro: deixa o bioma aparecer atrás */
-    --text: #e8eaf2;
-    --muted: #8a90a8;
+    --bg: #182338;                       /* fundo da página (fora dos painéis) */
+    --panel: rgba(189, 224, 248, 0.95);  /* painéis e menus: azul bebê */
+    --panel-2: #dcf0fd;                  /* botões e campos dentro dos painéis */
+    --panel-hover: #eef8ff;
+    --line: #86bfe6;
+    --text: #1b2b45;
+    --muted: #4d6583;
     --accent: #ffd84a;
+    --accent-text: #9a6200;            /* destaque em texto (dourado escuro, legível no azul bebê) */
     --danger: #ff5a64;
-    --primary: #7356e8;
-    --primary-hover: #8569f5;
+    --primary: #2f7fd8;
+    --primary-hover: #4192ea;
+    --board-bg: rgba(10, 14, 30, 0.80);  /* tabuleiro: escuro, com só um pouco do bioma atrás */
     --display: "Lilita One", system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   /* Lilita One só tem um peso: o 800 deixa a fonte reserva em negrito
@@ -49,8 +51,8 @@
     background: center / cover no-repeat;
     opacity: 0; transition: opacity .6s ease;
   }
-  #biomeBg::after { content: ""; position: absolute; inset: 0; background: var(--bg); opacity: var(--biome-bg-shade, .45); }
-  #biomeBg.on { opacity: var(--biome-bg-opacity, .55); }
+  #biomeBg::after { content: ""; position: absolute; inset: 0; background: var(--bg); opacity: var(--biome-bg-shade, .12); }
+  #biomeBg.on { opacity: var(--biome-bg-opacity, 1); }
   .screen { width: 100%; display: flex; justify-content: center; }
 
   /* ---------- Menu / Opções ---------- */
@@ -106,7 +108,7 @@
   .menu-btn:hover:not(:disabled), .menu-btn:focus-visible {
     outline: none;
     border-color: var(--accent);
-    background: #3f3680;
+    background: var(--panel-hover);
   }
   .menu-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
   .menu-btn.primary:hover, .menu-btn.primary:focus-visible { background: var(--primary-hover); border-color: #fff; }
@@ -118,7 +120,7 @@
     text-transform: uppercase;
     padding: 3px 8px;
     border-radius: 99px;
-    background: #3d3577;
+    background: #c9def0;
     color: var(--muted);
   }
   .menu-hint { font-size: 12px; color: var(--muted); }
@@ -163,7 +165,7 @@
     border: 3px solid var(--line);
     border-radius: 6px;
   }
-  #board:focus { outline: none; border-color: #7b6fd0; }
+  #board:focus { outline: none; border-color: #4f9be0; }
   /* Versus: dois tabuleiros lado a lado, reduzidos em telas estreitas */
   .arena.versus .board-canvas { width: min(308px, calc((100vw - 72px) / 2)); }
   .board-col.p2 .board-canvas { border-color: #6b4a3a; }
@@ -193,7 +195,7 @@
   .crystal-shape { display: grid; gap: 1px; }
   .crystal-shape i { display: block; width: 5px; height: 5px; border-radius: 1px; outline: 1px solid rgba(255,255,255,.6); }
   .crystal-mini.empty { color: var(--muted); font-size: 11px; }
-  .crystal-bar { width: 56px; height: 4px; border-radius: 2px; background: #2e2860; overflow: hidden; }
+  .crystal-bar { width: 56px; height: 4px; border-radius: 2px; background: #a9cfee; overflow: hidden; }
   .crystal-bar span { display: block; height: 100%; width: 0; background: var(--accent); }
   @media (max-width: 560px) {
     .hud-art { display: none; }
@@ -205,6 +207,9 @@
     inset: 3px;
     border-radius: 4px;
     background: rgba(8, 9, 14, 0.84);
+    /* sobre o escuro, o texto volta a ser claro */
+    --text: #eef4fb; --muted: #a9bdd6;
+    color: var(--text);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -216,6 +221,7 @@
   .overlay h2 { font-family: var(--display); font-weight: 400; font-size: 42px; letter-spacing: 1px; margin: 0; }
   .overlay h2.danger { color: var(--danger); }
   .overlay .actions { width: min(230px, 100%); }
+  .overlay .actions { --text: #1b2b45; --muted: #4d6583; color: var(--text); }
   .summary { display: grid; grid-template-columns: repeat(3, auto); gap: 4px 18px; margin: 0; }
   .summary dt { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
   .summary dd { margin: 0; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; grid-row: 2; }
@@ -232,10 +238,10 @@
   .stat .value { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .stat.wide { grid-column: 1 / -1; }
   .stat.wide .value { font-size: 32px; }
-  #speed.fast { color: var(--accent); }
+  #speed.fast { color: var(--accent-text); }
   #speed.frenzy { color: var(--danger); }
   #speed.turbo { color: #7fd6ff; }
-  #chainMsg { color: var(--accent); font-weight: 700; min-height: 22px; font-size: 18px; margin-top: 10px; }
+  #chainMsg { color: var(--accent-text); font-weight: 700; min-height: 22px; font-size: 18px; margin-top: 10px; }
   .side-actions { display: flex; gap: 8px; margin-top: 12px; }
   .side-btn {
     flex: 1;
@@ -251,10 +257,10 @@
   }
   .side-btn:hover { background: var(--primary-hover); }
   .side-btn.secondary { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); }
-  .side-btn.secondary:hover { background: #3f3680; }
+  .side-btn.secondary:hover { background: var(--panel-hover); }
   .help { font-size: 13px; color: var(--muted); line-height: 1.6; margin-top: 16px; }
   kbd {
-    background: #2e2860; border: 1px solid #5a51a3; border-radius: 4px;
+    background: #a9cfee; border: 1px solid #7fb0d8; border-radius: 4px;
     padding: 0 5px; font-size: 12px; font-family: inherit; color: var(--text);
   }
   .menu-btn kbd { font-weight: 500; }
@@ -266,7 +272,7 @@
     font-weight: 700;
     letter-spacing: 2px;
     text-transform: uppercase;
-    color: var(--accent);
+    color: var(--accent-text);
     border-bottom: 1px solid var(--line);
     padding-bottom: 6px;
   }
@@ -383,7 +389,7 @@
     height: 178px;
     overflow: hidden;   /* o desenho nunca invade o cartão vizinho */
   }
-  .char-card:hover, .char-card:focus-visible { outline: none; border-color: var(--accent); background: #3f3680; }
+  .char-card:hover, .char-card:focus-visible { outline: none; border-color: var(--accent); background: var(--panel-hover); }
   .char-card[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
   .char-num {
     position: absolute;
@@ -392,7 +398,7 @@
     min-width: 22px;
     height: 22px;
     border-radius: 11px;
-    background: var(--bg);
+    background: var(--panel-2);
     color: var(--text);
     font-size: 12px;
     font-weight: 700;
@@ -440,7 +446,7 @@
     transform: translate(-50%, -50%);
     border-radius: 50%;
     border: 3px solid var(--accent);
-    background: radial-gradient(circle at 50% 35%, #463d8c, var(--panel-2) 70%);
+    background: radial-gradient(circle at 50% 35%, #ffffff, var(--panel-2) 70%);
     display: flex;
     flex-direction: column;
     align-items: center;
