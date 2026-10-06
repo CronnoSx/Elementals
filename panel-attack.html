@@ -57,6 +57,15 @@
   @keyframes bubble-up { from { transform: translateY(0) translateX(0); } 50% { transform: translateY(-60vh) translateX(18px); }
                          to { transform: translateY(-125vh) translateX(-12px); } }
   body.in-game #menuBubbles { display: none; }
+  /* Cenários dos biomas passando devagar atrás dos menus (desfocados, com um véu colorido) */
+  #menuScene { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+  #menuScene div { position: absolute; inset: -5%; background: center / cover no-repeat; filter: blur(var(--menu-scene-blur));
+    opacity: 0; transition: opacity 2.2s ease; animation: scene-pan 26s ease-in-out infinite alternate; }
+  #menuScene div.on { opacity: 1; }
+  #menuScene::after { content: ""; position: absolute; inset: 0;
+    background: linear-gradient(120deg, rgba(47, 143, 224, .28), rgba(106, 90, 216, .22), rgba(217, 86, 138, .22)); }
+  @keyframes scene-pan { from { transform: scale(1.03) translateX(-1.5%); } to { transform: scale(1.1) translateX(1.5%); } }
+  body.in-game #menuScene { display: none; }
   #app { width: 100%; padding: 16px; position: relative; z-index: 1; }
   /* Fundo do bioma: só na partida, transparente e escurecido para os blocos ficarem legíveis */
   #biomeBg {
@@ -775,11 +784,12 @@
   }
   @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; }
-    body, #menuBubbles i { animation: none !important; }
+    body, #menuBubbles i, #menuScene div { animation: none !important; }
   }
 </style>
 </head>
 <body>
+<div id="menuScene" aria-hidden="true"></div>
 <div id="menuBubbles" aria-hidden="true"></div>
 <div id="biomeBg" aria-hidden="true"></div>
 <div id="app">
@@ -1286,6 +1296,10 @@ const TOUCH_PAD_OPACITY = 0.38;        // setas bem transparentes
 // Fundo da partida (imagem do bioma em backgrounds/<id>.webp)
 const BIOME_BG_DIR = "backgrounds/";
 const MENU_BUBBLES = 14;             // bolhas flutuando no fundo dos menus
+const MENU_SCENE_MS = 9000;          // menus: troca o cenário do bioma a cada 9 s
+const MENU_SCENE_BLUR_PX = 3;        // desfoque dos cenários atrás dos menus
+// Ilustração do mundo inteiro (ex.: "backgrounds/world.webp"): quando existir, vira o fundo fixo dos menus
+const MENU_WORLD_IMAGE = null;
 // Fundos que já existem na pasta (os outros biomas ficam com o fundo liso até a imagem chegar)
 const BIOME_BG_IDS = ["air", "earth", "fire", "forest", "metal", "water"];
 const BIOME_BG_OPACITY = 1;     // quanto a imagem aparece
@@ -5541,8 +5555,31 @@ for (const [k, v] of Object.entries({
   "--mascot-card-h": MASCOT_CARD_HEIGHT_PX + "px", "--mascot-new-h": MASCOT_NEW_HEIGHT_PX + "px",
   "--mascot-map-icon": MASCOT_MAP_ICON_PX + "px", "--lunge": MASCOT_LUNGE_PERCENT + "%",
   "--biome-bg-opacity": BIOME_BG_OPACITY, "--biome-bg-shade": BIOME_BG_SHADE,
-  "--touch-raise-h": TOUCH_RAISE_HEIGHT_PX + "px", "--pad-opacity": TOUCH_PAD_OPACITY, "--touch-chrome": TOUCH_CHROME_PX + "px",
+  "--touch-raise-h": TOUCH_RAISE_HEIGHT_PX + "px", "--pad-opacity": TOUCH_PAD_OPACITY, "--menu-scene-blur": MENU_SCENE_BLUR_PX + "px", "--touch-chrome": TOUCH_CHROME_PX + "px",
 })) document.documentElement.style.setProperty(k, v);
+
+/** Fundo dos menus: os cenários dos biomas se alternando (ou a ilustração do mundo, se houver). */
+function setupMenuScene() {
+  const root = $("menuScene");
+  const layers = [0, 1].map(() => root.appendChild(document.createElement("div")));
+  const list = MENU_WORLD_IMAGE ? [MENU_WORLD_IMAGE] : BIOME_BG_IDS.map(id => `${BIOME_BG_DIR}${id}.webp`);
+  let next = Math.floor(Math.random() * list.length); // só visual
+  let front = 0;
+  const show = () => {
+    const url = list[next++ % list.length];
+    const img = new Image();
+    img.onload = () => {
+      front ^= 1;
+      layers[front].style.backgroundImage = `url("${url}")`;
+      layers[front].classList.add("on");
+      layers[front ^ 1].classList.remove("on");
+    };
+    img.src = url;
+  };
+  show();
+  if (list.length > 1) setInterval(() => { if (currentScreen !== Screen.GAME) show(); }, MENU_SCENE_MS);
+}
+setupMenuScene();
 
 // Bolhas do fundo dos menus (só visual: pode usar Math.random)
 for (let i = 0; i < MENU_BUBBLES; i++) {
