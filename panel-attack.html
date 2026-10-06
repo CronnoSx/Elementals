@@ -673,6 +673,34 @@
                  justify-content: center; border-radius: 10px; border: 1px solid rgba(255,255,255,.3); font-size: 14px;
                  background: rgba(21,19,42,.7); color: #fff; touch-action: manipulation; }
   .hud-stats { display: none; }
+  /* iPhone: sem zoom de duplo toque, sem menu de toque longo, sem destaque cinza no toque */
+  html { -webkit-text-size-adjust: 100%; }
+  button, .board-canvas { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .board-canvas { touch-action: none; }
+  .touch-raise, .touch-pause, .touch-pad button { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+
+  /* Setas na tela (opção "Setas" no celular deitado): bem transparentes, estilo controle */
+  .touch-pad { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 6; }
+  .pad-dpad, .pad-face { position: absolute; bottom: max(16px, env(safe-area-inset-bottom)); width: 156px; height: 156px;
+    pointer-events: auto; opacity: var(--pad-opacity); }
+  .pad-dpad { left: max(16px, env(safe-area-inset-left)); }
+  .pad-face { right: max(16px, env(safe-area-inset-right)); }
+  .touch-pad button { position: absolute; display: grid; place-items: center; padding: 0; color: #fff; font: inherit;
+    font-size: 20px; font-weight: 800; background: rgba(255, 255, 255, .16); border: 2px solid rgba(255, 255, 255, .6);
+    touch-action: none; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+  .touch-pad button.held { background: rgba(255, 255, 255, .5); }
+  .pad-dpad button { width: 52px; height: 52px; }
+  .pad-dpad .pad-up    { left: 52px; top: 0;     border-radius: 10px 10px 4px 4px; }
+  .pad-dpad .pad-down  { left: 52px; bottom: 0;  border-radius: 4px 4px 10px 10px; }
+  .pad-dpad .pad-left  { left: 0;    top: 52px;  border-radius: 10px 4px 4px 10px; }
+  .pad-dpad .pad-right { right: 0;   top: 52px;  border-radius: 4px 10px 10px 4px; }
+  .pad-dpad::after { content: ""; position: absolute; left: 52px; top: 52px; width: 52px; height: 52px;
+    background: rgba(255, 255, 255, .12); border-left: 2px solid rgba(255, 255, 255, .6); border-right: 2px solid rgba(255, 255, 255, .6);
+    box-sizing: border-box; }
+  .pad-face button { width: 66px; height: 66px; border-radius: 50%; flex-direction: column; line-height: 1; }
+  .pad-face button small { font-size: 10px; font-weight: 700; letter-spacing: .5px; }
+  .pad-face .pad-swap  { left: 10px;  bottom: 6px; }
+  .pad-face .pad-raise { right: 6px;  top: 10px; }
   body.touch #gameScreen kbd { display: none; } /* sem teclado: some com as dicas de tecla */
   body.in-game { overflow: hidden; overscroll-behavior: none; }
   @media (pointer: coarse) {
@@ -694,15 +722,39 @@
     .hud-time { font-size: 12px; color: var(--muted); }
     .hud-score { font-size: 18px; font-weight: 800; }
     .board-col.p1 .hud-crystal { margin-left: 6px; }
-    .board-col.p1 .board-canvas,
-    .arena.versus .board-col.p1 .board-canvas { width: min(calc(100vw - 32px), calc((100dvh - var(--touch-chrome)) / 2)); }
-    .arena.versus .board-col.p1 .board-canvas { width: min(calc((100vw - 40px) * .7), calc((100dvh - var(--touch-chrome)) / 2)); }
+    /* 100vh primeiro: iPhone antigo não conhece dvh e ignora só a segunda linha */
+    .board-col.p1 .board-canvas { width: min(calc(100vw - 32px), calc((100vh - var(--touch-chrome)) / 2));
+                                  width: min(calc(100vw - 32px), calc((100dvh - var(--touch-chrome)) / 2)); }
+    .arena.versus .board-col.p1 .board-canvas { width: min(calc((100vw - 40px) * .7), calc((100vh - var(--touch-chrome)) / 2));
+                                                width: min(calc((100vw - 40px) * .7), calc((100dvh - var(--touch-chrome)) / 2)); }
     .arena.versus .board-col.p2 .board-canvas { width: calc((100vw - 40px) * .3); }
     .board-col.p2 .hud-info, .board-col.p2 .hud-art { display: none; }
     .board-col.p2 .board-hud { min-height: 48px; padding: 4px; justify-content: center; }
     .board-col.p2 .crystal-mini { max-width: 60px; }
     .board-col.p2 .crystal-bar { width: 40px; }
     .touch-bar { margin-top: 2px; }
+  }
+  /* Celular deitado: tabuleiros pela altura da tela, painel lateral escondido */
+  @media (orientation: landscape) and (max-height: 560px) {
+    body.in-game { align-items: center; }
+    #app { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+    #gameScreen { gap: 10px; }
+    #gameScreen #side { display: none; }
+    .mascot-stage { display: none; }
+    .board-hud { min-height: 40px; padding: 2px 6px; gap: 6px; }
+    .board-hud.solo { display: flex; }
+    .board-hud.solo .hud-crystal, .board-hud.solo .hud-tag { display: none; }
+    .hud-stats { display: flex; flex-direction: column; align-items: flex-end; margin-left: auto; line-height: 1.1;
+                 font-variant-numeric: tabular-nums; }
+    .hud-time { font-size: 12px; color: var(--muted); }
+    .hud-score { font-size: 16px; font-weight: 800; }
+    .board-col.p2 .hud-info { display: none; }
+    .board-col.p1 .board-canvas, .arena.versus .board-col.p1 .board-canvas { width: calc((100vh - 70px) / 2); width: calc((100dvh - 70px) / 2); }
+    .arena.versus .board-col.p2 .board-canvas { width: calc((100vh - 70px) * .36); width: calc((100dvh - 70px) * .36); }
+    body.touch .touch-bar { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom));
+      width: 120px; margin: 0; z-index: 6; }
+    body.touch.pad-mode.in-game .touch-pad { display: block; }
+    body.touch.pad-mode .touch-bar { display: none; }
   }
   /* Movimento reduzido: só troca a expressão, sem pulos nem tremidas */
   @media (prefers-reduced-motion: reduce) {
@@ -909,6 +961,13 @@
       </div>
 
       <div class="opt-section">Controles</div>
+      <div class="opt-row">
+        <div class="opt-label" id="lblTouch">Celular deitado</div>
+        <div class="seg" role="group" aria-labelledby="lblTouch" id="optTouch">
+          <button id="optTouchDrag" data-value="drag">Arrastar</button>
+          <button id="optTouchPad" data-value="pad">Setas na tela</button>
+        </div>
+      </div>
       <div class="actions">
         <button class="menu-btn" id="btnControls">Configurar controles <span aria-hidden="true">▶</span></button>
       </div>
@@ -970,6 +1029,19 @@
         <!-- Toque: tocar sobe uma linha; segurar = turbo -->
         <div class="touch-bar" id="touchBar">
           <button class="touch-raise" id="touchRaise" data-no-click-sound>▲ Subir</button>
+        </div>
+      </div>
+      <!-- Setas na tela (celular deitado, opção "Setas"): mesmas ações do teclado -->
+      <div class="touch-pad" id="touchPad">
+        <div class="pad-dpad">
+          <button class="pad-up" data-act="up" aria-label="Cima" data-no-click-sound>▲</button>
+          <button class="pad-left" data-act="left" aria-label="Esquerda" data-no-click-sound>◀</button>
+          <button class="pad-right" data-act="right" aria-label="Direita" data-no-click-sound>▶</button>
+          <button class="pad-down" data-act="down" aria-label="Baixo" data-no-click-sound>▼</button>
+        </div>
+        <div class="pad-face">
+          <button class="pad-raise" data-act="raise" aria-label="Subir a pilha" data-no-click-sound>△<small>SUBIR</small></button>
+          <button class="pad-swap" data-act="swap" aria-label="Trocar" data-no-click-sound>✕<small>TROCAR</small></button>
         </div>
       </div>
       <!-- Tabuleiro da IA (direita, espelhado) -->
@@ -1191,6 +1263,10 @@ const BOSS_CHARACTER = { earth: 13, forest: 4, metal: 15, fire: 6, water: 2, air
 const TOUCH_RAISE_HEIGHT_PX = 64;    // altura do botão "Subir"
 const TOUCH_CHROME_PX = 190;         // espaço vertical reservado ao HUD, botão e margens no celular
 const TOUCH_DRAG_GIVEUP_MS = 300;    // arrasto solto: desiste se a próxima troca não couber nesse tempo
+const TOUCH_CONTROL_MODES = ["drag", "pad"];
+const TOUCH_PAD_REPEAT_DELAY_MS = 170; // setas na tela: segurar repete o movimento depois disso...
+const TOUCH_PAD_REPEAT_MS = 70;        // ...a cada 70 ms
+const TOUCH_PAD_OPACITY = 0.38;        // setas bem transparentes
 
 // Fundo da partida (imagem do bioma em backgrounds/<id>.webp)
 const BIOME_BG_DIR = "backgrounds/";
@@ -1268,6 +1344,7 @@ function loadSettings() {
     sfxOn: true,
     sfxVolume: 70,     // 0..100
     aiLevel: "normal", // última dificuldade escolhida no Versus
+    touchControls: "drag", // celular deitado: "drag" (arrastar) ou "pad" (setas na tela)
   };
   try {
     const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
@@ -1281,6 +1358,7 @@ function loadSettings() {
       sfxOn: flag(saved.sfxOn, defaults.sfxOn),
       sfxVolume: percent(saved.sfxVolume, defaults.sfxVolume),
       aiLevel: saved.aiLevel in AI_LEVELS ? saved.aiLevel : defaults.aiLevel,
+      touchControls: TOUCH_CONTROL_MODES.includes(saved.touchControls) ? saved.touchControls : defaults.touchControls,
     };
   } catch {
     return defaults;
@@ -1485,7 +1563,7 @@ const Sound = {
 };
 
 // O primeiro gesto do jogador libera o áudio e começa a carregar os arquivos
-for (const type of ["pointerdown", "keydown"]) {
+for (const type of ["pointerdown", "touchend", "click", "keydown"]) { // touchend/click: o iPhone só libera o som nesses
   document.addEventListener(type, () => Sound.unlock(), { capture: true });
 }
 
@@ -2245,6 +2323,10 @@ $("btnControlsBack").addEventListener("click", () => showScreen(Screen.OPTIONS))
 $("btnBindReset").addEventListener("click", resetBindings);
 bindSegmented("optSpeed", "speed");
 bindSegmented("optAnim", "anim");
+bindSegmented("optTouch", "touchControls");
+const applyTouchMode = () => document.body.classList.toggle("pad-mode", settings.touchControls === "pad");
+$("optTouch").addEventListener("click", applyTouchMode);
+applyTouchMode();
 bindToggle("optMusicOn", "musicOn", "Ligada", "Desligada");
 bindToggle("optSfxOn", "sfxOn", "Ligados", "Desligados");
 bindSlider("optMusicVolume", "musicVolume");
@@ -3235,6 +3317,8 @@ const touchPlayable = () => currentScreen === Screen.GAME && state && !state.pau
 
 /** Toque ou caneta (o mouse continua como hoje no computador). */
 const isTouchPointer = (e) => e.pointerType === "touch" || e.pointerType === "pen";
+/** Arrastar troca blocos com o dedo E com o mouse (botão esquerdo): mesmas regras do teclado. */
+const isDragPointer = (e) => isTouchPointer(e) || (e.pointerType === "mouse" && e.button === 0);
 
 function enableTouchUI() {
   if (!document.body.classList.contains("touch")) document.body.classList.add("touch");
@@ -3245,9 +3329,10 @@ document.addEventListener("pointerdown", (e) => { if (isTouchPointer(e)) enableT
 /** Liga os eventos de toque (chamado no boot, depois que o canvas existe). */
 function setupTouch() {
 canvas.addEventListener("pointerdown", (e) => {
-  if (!isTouchPointer(e) || !touchPlayable()) return;
+  if (!isDragPointer(e) || !touchPlayable()) return;
   e.preventDefault();
-  noteInput("touch");
+  if (isTouchPointer(e)) noteInput("touch");
+  else { noteInput("mouse"); canvas.focus(); } // o teclado continua funcionando junto
   const { x, y } = boardCellAt(e.clientX, e.clientY);
   // Tocar: o cursor vai para a casa tocada (ele ocupa x e x+1)
   const c = state.cursor;
@@ -3317,6 +3402,40 @@ for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
   });
 }
 raiseBtn.addEventListener("contextmenu", (e) => e.preventDefault());
+
+// Setas na tela: cada botão chama a mesma ação do teclado (runAction); segurar repete
+for (const btn of document.querySelectorAll("#touchPad button")) {
+  const act = btn.dataset.act;
+  let timer = null;
+  const stop = () => {
+    clearTimeout(timer);
+    timer = null;
+    btn.classList.remove("held");
+    if (act === "raise") input.touchHold = false;
+  };
+  btn.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    if (!touchPlayable()) return;
+    noteInput("touch");
+    btn.classList.add("held");
+    try { btn.setPointerCapture(e.pointerId); } catch { /* sem captura */ }
+    if (act === "raise") { input.touchHold = true; input.touchPulse = true; return; }
+    useBoard(boards[0]);
+    runAction(act, false);
+    if (!DIRECTIONS[act]) return;
+    const repeat = () => {
+      if (touchPlayable()) { useBoard(boards[0]); runAction(act, true); }
+      timer = setTimeout(repeat, TOUCH_PAD_REPEAT_MS);
+    };
+    timer = setTimeout(repeat, TOUCH_PAD_REPEAT_DELAY_MS);
+  });
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) btn.addEventListener(type, stop);
+  btn.addEventListener("contextmenu", (e) => e.preventDefault());
+}
+
+// iPhone/Safari: na partida, o dedo não rola nem dá zoom na página
+document.addEventListener("touchmove", (e) => { if (currentScreen === Screen.GAME) e.preventDefault(); }, { passive: false });
+document.addEventListener("gesturestart", (e) => e.preventDefault());
 
 document.getElementById("touchPause").addEventListener("click", (e) => {
   noteInput("touch");
@@ -5406,7 +5525,7 @@ for (const [k, v] of Object.entries({
   "--mascot-card-h": MASCOT_CARD_HEIGHT_PX + "px", "--mascot-new-h": MASCOT_NEW_HEIGHT_PX + "px",
   "--mascot-map-icon": MASCOT_MAP_ICON_PX + "px", "--lunge": MASCOT_LUNGE_PERCENT + "%",
   "--biome-bg-opacity": BIOME_BG_OPACITY, "--biome-bg-shade": BIOME_BG_SHADE,
-  "--touch-raise-h": TOUCH_RAISE_HEIGHT_PX + "px", "--touch-chrome": TOUCH_CHROME_PX + "px",
+  "--touch-raise-h": TOUCH_RAISE_HEIGHT_PX + "px", "--pad-opacity": TOUCH_PAD_OPACITY, "--touch-chrome": TOUCH_CHROME_PX + "px",
 })) document.documentElement.style.setProperty(k, v);
 
 setupTouch();
