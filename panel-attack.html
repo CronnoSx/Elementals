@@ -502,6 +502,41 @@
   .biome small { font-size: 0.78em; font-weight: 700; opacity: 0.9; }
   .biome:hover, .biome:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; transform: translate(-50%, -50%) scale(1.07); }
   .match-sub { color: var(--muted); font-size: 13px; margin: -6px 0 10px; }
+  .biome .biome-stars { position: absolute; left: 50%; bottom: -13%; transform: translateX(-50%); padding: 1px 7px;
+    border-radius: 99px; background: var(--panel-2); color: var(--accent-text); border: 1px solid var(--line);
+    font-size: .8em; font-style: normal; text-shadow: none; white-space: nowrap; }
+  .stars-total { color: var(--accent-text); font-weight: 700; }
+
+  /* ---------- Fases do bioma (campanha) ---------- */
+  .stage-trail { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+  .stage { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 14px; border-radius: 10px;
+    border: 2px solid var(--line); background: var(--panel-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .stage:hover:not(:disabled), .stage:focus-visible { outline: none; border-color: var(--accent); background: var(--panel-hover); }
+  .stage:disabled { opacity: .55; cursor: default; }
+  .stage-num { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--c);
+    color: #fff; font-family: var(--display); font-size: 18px; text-shadow: 0 1px 2px rgba(0, 0, 0, .5); }
+  .stage.boss .stage-num { box-shadow: 0 0 0 3px var(--accent); }
+  .stage-info { flex: 1; min-width: 0; }
+  .stage-info b { display: block; font-size: 15px; }
+  .stage-info small { color: var(--muted); font-size: 12px; }
+  .stage-stars { flex: none; font-size: 18px; letter-spacing: 2px; color: #d9a514; }
+  .stage-stars .off { color: var(--line); }
+  .stage-reward { flex: none; width: 46px; height: 46px; }
+
+  /* Objetivo do desafio, no painel lateral */
+  #goalBox { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line); }
+  #goalBox b { display: block; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+  #goalDesc { font-size: 13px; margin: 2px 0; }
+  #goalBox span { font-size: 16px; font-weight: 700; }
+  /* Chefe: tabuleiro da IA com a aura do bioma */
+  .board-col.p2.boss .board-canvas { border-color: var(--boss-c, var(--accent)); box-shadow: 0 0 18px 3px var(--boss-c, var(--accent)); }
+  /* Estrelas no fim da fase */
+  .result-stars { font-size: 13px; }
+  .result-stars .big { font-size: 30px; letter-spacing: 4px; color: #ffd84a; text-align: center; }
+  .result-stars .big .off { color: rgba(255, 255, 255, .25); }
+  .result-stars ul { margin: 4px 0 0; padding: 0; list-style: none; text-align: left; }
+  .result-stars li::before { content: "☆ "; color: var(--muted); }
+  .result-stars li.ok::before { content: "★ "; color: #ffd84a; }
 
   .toast {
     position: fixed;
@@ -783,7 +818,7 @@
   <section id="mapScreen" class="screen" hidden>
     <div class="menu-card wide">
       <h2 class="opt-title">Campanha</h2>
-      <p class="step-hint">Escolha um bioma para jogar</p>
+      <p class="step-hint">Escolha um bioma para jogar · <span class="stars-total" id="mapStars">★ 0</span></p>
       <div class="map-wrap">
         <div class="map" id="campaignMap">
           <svg class="map-lines" id="mapLines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"></svg>
@@ -798,6 +833,18 @@
         <button class="menu-btn" id="btnMapMascot">Mascote <span class="badge" id="mapMascotName">Nenhum</span></button>
         <button class="menu-btn" id="btnNewHero">Novo personagem</button>
         <button class="menu-btn" id="btnMapBack">Voltar <kbd>Esc</kbd></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= FASES DO BIOMA ======================= -->
+  <section id="stagesScreen" class="screen" hidden>
+    <div class="menu-card wide">
+      <h2 class="opt-title" id="stagesTitle">Bioma</h2>
+      <p class="step-hint">Vença as fases em ordem. O chefe guarda o mascote do bioma.</p>
+      <div class="stage-trail" id="stageTrail"></div>
+      <div class="actions row">
+        <button class="menu-btn" id="btnStagesBack">Voltar ao Mapa <kbd>Esc</kbd></button>
       </div>
     </div>
   </section>
@@ -960,12 +1007,14 @@
           <div class="mascot-box" id="newMascotArt"></div>
           <div><h3>Novo mascote!</h3><p><b id="newMascotName"></b>: <span id="newMascotIntro"></span></p></div>
         </div>
+        <div class="result-stars" id="resultStars" hidden></div>
         <dl class="summary">
           <dt>Pontos</dt><dd id="goScore">0</dd>
           <dt>Tempo</dt><dd id="goTime">00:00</dd>
           <dt>Chain</dt><dd id="goChain">0</dd>
         </dl>
         <div class="actions">
+          <button class="menu-btn primary" id="btnNextStage" hidden>Próxima fase</button>
           <button class="menu-btn primary" id="btnPlayAgain">Jogar Novamente <kbd>Enter</kbd></button>
           <button class="menu-btn" id="btnGameOverMenu"><span class="menu-target">Voltar ao Menu</span> <kbd>Esc</kbd></button>
         </div>
@@ -982,6 +1031,7 @@
         <div class="stat"><div class="label">Linhas/min</div><div class="value" id="speed">0</div></div>
       </div>
       <div id="chainMsg"></div>
+      <div id="goalBox" hidden><b>Objetivo</b><div id="goalDesc"></div><span id="goalText"></span></div>
       <div class="side-actions">
         <button class="side-btn" id="restartBtn">Reiniciar</button>
         <button class="side-btn secondary" id="menuBtn">Menu</button>
@@ -1095,17 +1145,48 @@ const AI_LEVEL_FACTORS = {
   normal: { label: "Normal",  speed: 1,   errors: 1 },
   hard:   { label: "Difícil", speed: 0.4, errors: 0.15, depth: 3, slide: 5 },
 };
-const AI_LEVELS = Object.fromEntries(Object.entries(AI_LEVEL_FACTORS).map(([id, f]) => {
-  const { speed, errors, ...rest } = f;
-  return [id, { ...AI_NORMAL, ...rest,
+/** Nível de IA a partir do Normal: speed multiplica os tempos, errors a chance de erro. */
+function deriveAiLevel({ speed, errors, ...rest }) {
+  return { ...AI_NORMAL, ...rest,
     moveMs: Math.round(AI_NORMAL.moveMs * speed),
     thinkMs: Math.round(AI_NORMAL.thinkMs * speed),
-    errorChance: Math.min(0.9, AI_NORMAL.errorChance * errors) }];
-}));
+    errorChance: Math.min(0.9, AI_NORMAL.errorChance * errors) };
+}
+const AI_LEVELS = Object.fromEntries(Object.entries(AI_LEVEL_FACTORS).map(([id, f]) => [id, deriveAiLevel(f)]));
 // Erros "de gente" (na chance errorChance de cada nível)
 const AI_MISTAKE_FIDGET_SHARE = 0.35; // parte dos erros que são trocas sem efeito
 const AI_MODEST_MAX_SHARE = 0.4;      // jogada "modesta": até 40% do valor da melhor
 const CAMPAIGN_AI_LEVEL = "easy"; // todos os biomas iniciais usam a mesma dificuldade
+
+/* Campanha: 5 fases por bioma (3 duelos, 1 desafio solo, 1 chefe). Todos os
+   biomas iniciais usam a MESMA curva; a IA de cada fase também deriva do Normal. */
+const CAMPAIGN_STAGE_AI = {
+  duel1: { label: "Fácil",     speed: 2.5, errors: 3.3, depth: 1, slide: 1, turbo: false },
+  duel2: { label: "Fácil +",   speed: 2.2, errors: 2.8, depth: 1, slide: 2, turbo: false },
+  duel3: { label: "Fácil ++",  speed: 1.9, errors: 2.3, depth: 2, slide: 2, turbo: false },
+  boss:  { label: "Chefe",     speed: 1.6, errors: 1.8, depth: 2, slide: 3, turbo: true },
+};
+const CAMPAIGN_AI = Object.fromEntries(Object.entries(CAMPAIGN_STAGE_AI).map(([id, f]) => [id, deriveAiLevel(f)]));
+const CAMPAIGN_STAGES = [
+  { kind: "duel", ai: "duel1", name: "Duelo 1" },
+  { kind: "duel", ai: "duel2", name: "Duelo 2" },
+  { kind: "duel", ai: "duel3", name: "Duelo 3" },
+  { kind: "challenge", name: "Desafio" },
+  { kind: "boss", ai: "boss", name: "Chefe" },
+];
+const STAGES_PER_BIOME = CAMPAIGN_STAGES.length;
+// Desafio (fase 4) de cada bioma: survive = sobreviver, chain = fazer cadeia, clear = limpar blocos do elemento
+const BIOME_CHALLENGES = { earth: "survive", forest: "clear", metal: "chain", fire: "clear", water: "survive", air: "chain" };
+const CHALLENGE_SURVIVE_MS = 90000;
+const CHALLENGE_CHAIN = 3;
+const CHALLENGE_CLEAR_COUNT = 30;
+// Estrelas: 1 = vencer; as outras duas pelos critérios abaixo
+const STAR_DUEL_CHAIN = 2;              // duelo/chefe: fazer uma cadeia x2
+const STAR_DUEL_FAST_MS = 120000;       // duelo/chefe: vencer em até 2:00
+const STAR_CHALLENGE_FAST_MS = [120000, 75000]; // desafio de cadeia/limpar: até 2:00 e até 1:15
+const BIOME_ELEMENT = { water: "water", fire: "fire", earth: "earth", air: "air", forest: "plant", metal: "metal" };
+const BIOME_OF = { earth: "da Terra", forest: "da Floresta", metal: "do Metal", fire: "do Fogo", water: "da Água", air: "do Ar" };
+const BOSS_CHARACTER = { earth: 13, forest: 4, metal: 15, fire: 6, water: 2, air: 10 }; // Guardião: sempre o mesmo por bioma
 // Toque (celular): só muda o jeito de dar o comando, nunca as regras
 const TOUCH_RAISE_HEIGHT_PX = 64;    // altura do botão "Subir"
 const TOUCH_CHROME_PX = 190;         // espaço vertical reservado ao HUD, botão e margens no celular
@@ -1607,6 +1688,7 @@ function createInitialState({ seed = randomSeed(), isAI = false, characterId = n
     cursor: { x: 3, y: CONFIG.ROWS - 3 }, // x = coluna da esquerda do cursor
     score: 0,
     bestChain: 0,
+    cleared: {},            // blocos limpos por elemento (desafio "limpar")
     phase: Phase.PLAYING,
     message: "",
     messageTimer: 0,
@@ -1757,7 +1839,7 @@ function isInDanger() {
    ========================================================= */
 const Screen = {
   MENU: "menu", SINGLE: "single", VERSUS: "versus", CREATE: "create", MAP: "map",
-  OPTIONS: "options", CONTROLS: "controls", GAME: "game", MASCOTS: "mascots",
+  OPTIONS: "options", CONTROLS: "controls", GAME: "game", MASCOTS: "mascots", STAGES: "stages",
 };
 let currentScreen = Screen.MENU;
 let optionsReturn = Screen.MENU; // para onde "Voltar" leva a partir das Opções
@@ -1773,6 +1855,7 @@ const screens = {
   [Screen.MAP]: $("mapScreen"),
   [Screen.GAME]: $("gameScreen"),
   [Screen.MASCOTS]: $("mascotsScreen"),
+  [Screen.STAGES]: $("stagesScreen"),
 };
 
 function showScreen(name) {
@@ -1793,6 +1876,11 @@ function showScreen(name) {
       b.setAttribute("aria-pressed", String(b.dataset.level === settings.aiLevel && !b.dataset.beginner));
     }
     $("aiLevelList").querySelector(`[data-level="${settings.aiLevel}"]:not([data-beginner])`).focus();
+  }
+  if (name === Screen.STAGES) {
+    renderStages();
+    const btns = [...$("stageTrail").querySelectorAll(".stage:not(:disabled)")];
+    (btns.find(b => b.dataset.stars === "0") || btns[btns.length - 1])?.focus();
   }
   if (name === Screen.MAP) {
     renderMap();
@@ -1840,10 +1928,162 @@ function startEndless(beginner = false) {
   startMatch();
 }
 
-function startCampaignMatch(biome) {
-  match = { mode: "campaign", biome, versus: true, aiLevel: CAMPAIGN_AI_LEVEL, opponentId: randomOpponentId(), result: null, beginner: false,
-            opponentMascot: (mascotByBiome(biome.id) || {}).id || null }; // a IA vem com o mascote do bioma
+/** Começa a fase `index` (0..4) de um bioma. Duelos e chefe são Versus; o desafio é solo. */
+function startCampaignStage(biome, index) {
+  const stage = CAMPAIGN_STAGES[index];
+  const boss = stage.kind === "boss";
+  const versus = stage.kind !== "challenge";
+  const biomeMascot = (mascotByBiome(biome.id) || {}).id || null;
+  let bossId = BOSS_CHARACTER[biome.id] || 1;
+  if (hero && bossId === hero.id) bossId = (bossId % CHARACTERS.length) + 1;
+  // Duelos: mascote aleatório (nunca o do bioma, que é do chefe); chefe: o mascote do bioma
+  const duelMascots = MASCOTS.map(m => m.id).filter(id => id !== biomeMascot && id !== playerMascotId());
+  match = { mode: "campaign", biome, stageIndex: index, stage, versus, boss, beginner: false, result: null,
+            aiLevel: CAMPAIGN_AI_LEVEL, ai: versus ? CAMPAIGN_AI[stage.ai] : null,
+            challenge: versus ? null : BIOME_CHALLENGES[biome.id],
+            opponentId: boss ? bossId : randomOpponentId(),
+            opponentName: boss ? "Guardião" : null, // nome curto no cabeçalho; o título completo fica na tela de fases
+            opponentMascot: boss ? biomeMascot : duelMascots[Math.floor(Math.random() * duelMascots.length)] || null };
   startMatch();
+}
+
+/** Estrelas salvas de cada fase de um bioma (0..3), sempre com 5 posições. */
+function stageStars(biomeId) {
+  const saved = hero && hero.stages && Array.isArray(hero.stages[biomeId]) ? hero.stages[biomeId] : [];
+  return Array.from({ length: STAGES_PER_BIOME }, (_, i) => Math.max(0, Math.min(3, Math.floor(Number(saved[i]) || 0))));
+}
+const stageUnlocked = (biomeId, i) => i === 0 || stageStars(biomeId)[i - 1] > 0;
+const biomeStarTotal = (biomeId) => stageStars(biomeId).reduce((a, b) => a + b, 0);
+const elementIndexOf = (key) => ELEMENTS.findIndex(e => e && e.key === key);
+
+/** Texto do desafio de um bioma. */
+function challengeText(biome) {
+  const type = BIOME_CHALLENGES[biome.id];
+  if (type === "survive") return `Sobreviva por ${CHALLENGE_SURVIVE_MS / 1000} s`;
+  if (type === "chain") return `Faça uma cadeia x${CHALLENGE_CHAIN}`;
+  const el = ELEMENTS[elementIndexOf(BIOME_ELEMENT[biome.id])];
+  return `Limpe ${CHALLENGE_CLEAR_COUNT} blocos de ${el ? el.name : biome.name}`;
+}
+
+/** Progresso do desafio da partida atual (do tabuleiro do jogador). */
+function challengeProgress() {
+  const st = boards[0];
+  if (match.challenge === "survive") {
+    const goal = CHALLENGE_SURVIVE_MS / 1000;
+    const now = Math.min(goal, Math.floor(st.elapsedMs / 1000));
+    return { done: st.elapsedMs >= CHALLENGE_SURVIVE_MS, text: `${now} / ${goal} s` };
+  }
+  if (match.challenge === "chain") {
+    return { done: st.bestChain >= CHALLENGE_CHAIN, text: `melhor x${st.bestChain} / x${CHALLENGE_CHAIN}` };
+  }
+  const n = Math.min(CHALLENGE_CLEAR_COUNT, st.cleared[elementIndexOf(BIOME_ELEMENT[match.biome.id])] || 0);
+  return { done: n >= CHALLENGE_CLEAR_COUNT, text: `${n} / ${CHALLENGE_CLEAR_COUNT}` };
+}
+
+/** A cada quadro do desafio: atualiza o objetivo e encerra quando cumprido. */
+function checkChallenge() {
+  const p = challengeProgress();
+  $("goalText").textContent = p.text;
+  if (!p.done) return;
+  useBoard(boards[0]);
+  state.phase = Phase.GAME_OVER;
+  state.grace = null;
+  state.banner = "";
+  Sound.stopLoop();
+  match.result = "win";
+  Sound.play("victory", { force: true });
+  mascotReact("win");
+  finishCampaignStage();
+}
+
+/** Critérios das 3 estrelas da fase que acabou. */
+function stageStarCriteria(won) {
+  const st = boards[0];
+  if (match.stage.kind !== "challenge") return [
+    { label: "Vencer", ok: won },
+    { label: `Fazer uma cadeia x${STAR_DUEL_CHAIN}`, ok: won && st.bestChain >= STAR_DUEL_CHAIN },
+    { label: `Vencer em até ${formatTime(STAR_DUEL_FAST_MS)}`, ok: won && st.elapsedMs <= STAR_DUEL_FAST_MS },
+  ];
+  if (match.challenge === "survive") return [
+    { label: "Completar o desafio", ok: won },
+    { label: "Fazer uma cadeia x2", ok: won && st.bestChain >= 2 },
+    { label: "Fazer uma cadeia x3", ok: won && st.bestChain >= 3 },
+  ];
+  return [
+    { label: "Completar o desafio", ok: won },
+    ...STAR_CHALLENGE_FAST_MS.map(ms => ({ label: `Completar em até ${formatTime(ms)}`, ok: won && st.elapsedMs <= ms })),
+  ];
+}
+
+/** Fim de uma fase da campanha: estrelas (guarda a melhor) e, no chefe, o mascote. */
+function finishCampaignStage() {
+  const won = match.result === "win";
+  match.stars = stageStarCriteria(won);
+  const got = match.stars.filter(c => c.ok).length;
+  if (hero && won) {
+    const arr = stageStars(match.biome.id);
+    if (got > arr[match.stageIndex]) {
+      arr[match.stageIndex] = got;
+      hero.stages = { ...(hero.stages || {}), [match.biome.id]: arr };
+      saveHero();
+    }
+  }
+  if (won && match.boss) match.newMascot = awardBiomeMascot(match.biome.id);
+}
+
+/* ---------- Tela de fases do bioma ---------- */
+let stagesBiome = null; // bioma aberto na tela de fases
+function openStages(biome) { stagesBiome = biome; showScreen(Screen.STAGES); }
+
+function renderStages() {
+  const biome = stagesBiome;
+  const stars = stageStars(biome.id);
+  $("stagesTitle").textContent = `${biome.name} · ★ ${biomeStarTotal(biome.id)}/${STAGES_PER_BIOME * 3}`;
+  const trail = $("stageTrail");
+  trail.replaceChildren();
+  const mascot = mascotByBiome(biome.id);
+  CAMPAIGN_STAGES.forEach((stage, i) => {
+    const open = stageUnlocked(biome.id, i);
+    const b = document.createElement("button");
+    b.className = "stage" + (stage.kind === "boss" ? " boss" : "");
+    b.style.setProperty("--c", biome.color);
+    b.disabled = !open;
+    b.dataset.stars = stars[i];
+    const num = document.createElement("span");
+    num.className = "stage-num";
+    num.textContent = open ? String(i + 1) : "🔒";
+    const info = document.createElement("span");
+    info.className = "stage-info";
+    const title = document.createElement("b");
+    const desc = document.createElement("small");
+    if (stage.kind === "duel") {
+      title.textContent = stage.name;
+      desc.textContent = `Contra a IA · ${CAMPAIGN_STAGE_AI[stage.ai].label}`;
+    } else if (stage.kind === "challenge") {
+      title.textContent = stage.name;
+      desc.textContent = challengeText(biome);
+    } else {
+      title.textContent = `Chefe: Guardião ${BIOME_OF[biome.id] || biome.name}`;
+      const won = !!hero && !!mascot && hero.mascots.includes(biome.id);
+      desc.textContent = !mascot ? "O desafio final do bioma"
+        : won ? `${mascot.name} já está com você` : `Vença para conquistar ${mascot.name}`;
+    }
+    if (!open) desc.textContent = "Vença a fase anterior para liberar";
+    info.append(title, desc);
+    const st = document.createElement("span");
+    st.className = "stage-stars";
+    st.innerHTML = "★".repeat(stars[i]) + `<span class="off">${"★".repeat(3 - stars[i])}</span>`;
+    b.append(num, info, st);
+    if (stage.kind === "boss" && mascot) {
+      const box = document.createElement("span");
+      box.className = "stage-reward";
+      box.appendChild(mascotFigure(mascot.id, { locked: !(hero && hero.mascots.includes(biome.id)) }));
+      b.appendChild(box);
+    }
+    b.setAttribute("aria-label", `Fase ${i + 1}: ${title.textContent}. ${desc.textContent}. ${stars[i]} de 3 estrelas`);
+    b.addEventListener("click", () => startCampaignStage(biome, i));
+    trail.appendChild(b);
+  });
 }
 
 function startVersus(level, beginner = false) {
@@ -1861,17 +2101,20 @@ function matchPalette() {
 
 function startMatch() {
   const campaign = match.mode === "campaign";
-  const levelLabel = AI_LEVELS[match.aiLevel].label;
+  const levelLabel = (match.ai || AI_LEVELS[match.aiLevel]).label;
   $("matchTitle").textContent = campaign ? match.biome.name.toUpperCase()
     : match.mode === "versus" ? "VERSUS" : "ENDLESS";
   const beginner = match.beginner ? " · Iniciante (5 elementos)" : "";
-  $("matchSub").hidden = !match.versus && !match.beginner;
-  $("matchSub").textContent = (campaign ? `${heroName()} · Campanha · IA ${levelLabel}`
+  $("matchSub").hidden = !match.versus && !match.beginner && !campaign;
+  $("goalBox").hidden = !match.challenge;
+  if (match.challenge) { $("goalDesc").textContent = challengeText(match.biome); $("goalText").textContent = ""; }
+  $("matchSub").textContent = (campaign ? `${heroName()} · Fase ${match.stageIndex + 1}/${STAGES_PER_BIOME} · `
+      + (match.boss ? `Chefe: Guardião ${BIOME_OF[match.biome.id] || ""}` : match.versus ? `IA ${levelLabel}` : CAMPAIGN_STAGES[match.stageIndex].name)
     : match.versus ? `vs ${CHARACTER_NAMES[match.opponentId - 1]} · IA ${levelLabel}` : "Endless").concat(beginner);
   document.querySelectorAll(".menu-target").forEach(el => {
-    el.textContent = campaign ? "Voltar ao Mapa" : "Voltar ao Menu";
+    el.textContent = campaign ? "Voltar às Fases" : "Voltar ao Menu";
   });
-  $("menuBtn").textContent = campaign ? "Mapa" : "Menu";
+  $("menuBtn").textContent = campaign ? "Fases" : "Menu";
   setBiomeBackground();
   restart();
   showScreen(Screen.GAME);
@@ -1900,7 +2143,8 @@ function setBiomeBackground() {
 /** Sair da partida: Campanha → mapa · Versus → escolha de dificuldade · Endless → Single Player. */
 function goToMenu() {
   optionsReturn = Screen.MENU;
-  showScreen(match.mode === "campaign" ? Screen.MAP : match.mode === "versus" ? Screen.VERSUS : Screen.SINGLE);
+  if (match.mode === "campaign") openStages(match.biome);
+  else showScreen(match.mode === "versus" ? Screen.VERSUS : Screen.SINGLE);
 }
 
 /** A partida acabou? (no Versus, basta um dos tabuleiros estourar) */
@@ -1929,6 +2173,7 @@ function goBack() {
   else if (currentScreen === Screen.VERSUS) showScreen(Screen.MENU);
   else if (currentScreen === Screen.CREATE) createBack();
   else if (currentScreen === Screen.MAP) showScreen(Screen.SINGLE);
+  else if (currentScreen === Screen.STAGES) showScreen(Screen.MAP);
   else if (currentScreen === Screen.MASCOTS) showScreen(mascotsReturn);
 }
 
@@ -2020,6 +2265,8 @@ gameButton("btnPauseRestart", () => restart());
 gameButton("btnPauseOptions", () => openOptions(Screen.GAME));
 gameButton("btnPauseMenu", goToMenu);
 gameButton("btnPlayAgain", () => restart());
+gameButton("btnNextStage", () => startCampaignStage(match.biome, match.stageIndex + 1));
+$("btnStagesBack").addEventListener("click", () => showScreen(Screen.MAP));
 gameButton("btnGameOverMenu", goToMenu);
 
 // ---------- Aviso rápido (toast) ----------
@@ -2264,9 +2511,9 @@ function renderMascotGrid() {
     const title = document.createElement("b");
     title.textContent = won ? m.name : "???";
     const info = document.createElement("small");
-    info.textContent = won ? `${biomeName(m.biome)} · ${m.personality}` : `Vença o bioma ${biomeName(m.biome)} para conquistar`;
+    info.textContent = won ? `${biomeName(m.biome)} · ${m.personality}` : `Vença o chefe do bioma ${biomeName(m.biome)} para conquistar`;
     b.append(box, title, info);
-    b.setAttribute("aria-label", won ? `${m.name}, ${biomeName(m.biome)}` : `Bloqueado: vença o bioma ${biomeName(m.biome)}`);
+    b.setAttribute("aria-label", won ? `${m.name}, ${biomeName(m.biome)}` : `Bloqueado: vença o chefe do bioma ${biomeName(m.biome)}`);
     b.addEventListener("click", () => { if (won) selectMascot(m.biome); });
     grid.appendChild(b);
   }
@@ -2325,8 +2572,13 @@ function migrateHero(h) {
     }
     return v;
   };
-  const { name, ...rest } = h; // o nome é texto livre: não mexe
+  const { name, stages, ...rest } = h; // o nome é texto livre: não mexe
   const out = { ...walk(rest), name };
+  // Estrelas da campanha: { bioma: [0..3 x5] } (o walk junta repetidos em listas, então fica de fora)
+  out.stages = {};
+  if (stages && typeof stages === "object") {
+    for (const [k, v] of Object.entries(stages)) if (Array.isArray(v)) out.stages[MAP[k] || k] = v;
+  }
   // Mascotes: saves antigos não têm → nenhum conquistado, nenhum selecionado
   const known = (b) => typeof b === "string" && !!mascotByBiome(b);
   out.mascots = Array.isArray(out.mascots) ? [...new Set(out.mascots.filter(known))] : [];
@@ -2423,7 +2675,8 @@ $("nameForm").addEventListener("submit", (e) => {
   e.preventDefault();
   const name = $("heroName").value.replace(/\s+/g, " ").trim() || DEFAULT_HERO_NAME;
   hero = { gender: draft.gender, id: draft.id, name,
-           mascots: hero ? hero.mascots : [], mascot: hero ? hero.mascot : null }; // mascotes conquistados ficam
+           mascots: hero ? hero.mascots : [], mascot: hero ? hero.mascot : null, // mascotes conquistados ficam
+           stages: hero ? hero.stages : {} };                                     // e as estrelas da campanha também
   saveHero();
   Sound.play("uiClick");
   showScreen(Screen.MAP);
@@ -2461,7 +2714,10 @@ function buildMap() {
       icon.appendChild(img);
       b.appendChild(icon);
     }
-    b.addEventListener("click", () => startCampaignMatch(biome));
+    const stars = document.createElement("em");
+    stars.className = "biome-stars";
+    b.appendChild(stars);
+    b.addEventListener("click", () => openStages(biome));
     mapEl.appendChild(b);
   });
 }
@@ -2476,12 +2732,14 @@ function renderMap() {
   $("mapCenter").classList.toggle("has-mascot", !!mid);
   $("mapMascot").replaceChildren(...(mid ? [mascotFigure(mid, { dir: -1 })] : []));
   $("mapMascotName").textContent = mid ? mascotById(mid).name : "Nenhum";
+  $("mapStars").textContent = `★ ${BIOMES.reduce((t, b) => t + biomeStarTotal(b.id), 0)}/${BIOMES.length * STAGES_PER_BIOME * 3}`;
   // Mascote do bioma: colorido se já foi conquistado, silhueta se não
   BIOMES.forEach((biome, i) => {
     const icon = $("campaignMap").querySelectorAll(".biome")[i].querySelector(".biome-mascot");
     if (!icon) return;
     const won = !!hero && hero.mascots.includes(biome.id);
     icon.classList.toggle("locked", !won);
+    icon.parentElement.querySelector(".biome-stars").textContent = `★ ${biomeStarTotal(biome.id)}/${STAGES_PER_BIOME * 3}`;
     icon.title = won ? mascotByBiome(biome.id).name : "Mascote não conquistado";
   });
 }
@@ -3302,6 +3560,7 @@ function resolveMatches() {
     const tally = {};
     for (const { x, y } of cells) tally[g[y][x].color] = (tally[g[y][x].color] || 0) + 1;
     const element = Number(Object.keys(tally).sort((a, b) => tally[b] - tally[a])[0]);
+    for (const [c, n] of Object.entries(tally)) state.cleared[c] = (state.cleared[c] || 0) + n;
     breakAdjacentCrystals(cells);
     for (const { x, y } of cells) {
       const p = g[y][x];
@@ -3397,10 +3656,11 @@ function gameOver() {
     useBoard(state.opponent);
     mascotReact("win");
     useBoard(loser);
-    if (match.mode === "campaign" && match.result === "win") match.newMascot = awardBiomeMascot(match.biome.id);
+    if (match.mode === "campaign") finishCampaignStage();
   } else {
     Sound.play("gameOver");
     mascotReact("lose");
+    if (match.challenge) { match.result = "lose"; finishCampaignStage(); }
   }
 }
 
@@ -3893,7 +4153,7 @@ function aiHumanMistake(moves) {
 
 function updateAI(dt) {
   const ai = state.ai;
-  const level = AI_LEVELS[match.aiLevel];
+  const level = match.ai || AI_LEVELS[match.aiLevel];
   ai.thinkTimer -= dt;
   ai.moveTimer -= dt;
   if (!ai.plan && ai.thinkTimer <= 0) {
@@ -4938,9 +5198,19 @@ function syncHud() {
   if (ui.gameOverOverlay.hidden === over) {
     ui.gameOverOverlay.hidden = !over;
     if (over) {
-      const title = !match.versus ? "GAME OVER" : match.result === "win" ? "VITÓRIA!" : "DERROTA";
+      const won = match.result === "win";
+      const title = match.challenge ? (won ? "DESAFIO CONCLUÍDO!" : "NÃO FOI DESSA VEZ")
+        : !match.versus ? "GAME OVER" : won ? "VITÓRIA!" : "DERROTA";
       ui.goTitle.textContent = title;
-      ui.goTitle.className = match.versus && match.result === "win" ? "win" : "danger";
+      ui.goTitle.className = won ? "win" : "danger";
+      const rs = $("resultStars");
+      rs.hidden = !match.stars;
+      if (match.stars) {
+        const n = match.stars.filter(c => c.ok).length;
+        rs.innerHTML = `<div class="big">${"★".repeat(n)}<span class="off">${"★".repeat(3 - n)}</span></div>`
+          + `<ul>${match.stars.map(c => `<li class="${c.ok ? "ok" : ""}">${c.label}</li>`).join("")}</ul>`;
+      }
+      $("btnNextStage").hidden = !(match.mode === "campaign" && won && match.stageIndex < STAGES_PER_BIOME - 1);
       const nm = match.newMascot;
       $("newMascot").hidden = !nm;
       if (nm) {
@@ -5061,6 +5331,7 @@ function loop(time) {
 
   if (currentScreen === Screen.GAME && boards.length) {
     for (const b of boards) { useBoard(b); update(dt); }
+    if (match.challenge && !matchOver() && !boards[0].paused) checkChallenge();
     for (const b of boards) { useBoard(b); render(); }
     useBoard(boards[0]);           // fora do loop, `state` é sempre o jogador
     ui.arena.classList.toggle("paused", state.paused && !matchOver()); // congela os mascotes
@@ -5096,7 +5367,7 @@ function restart() {
   boards = [player];
   if (match.versus) {
     const cpu = createInitialState({
-      seed, palette, isAI: true, characterId: match.opponentId, name: CHARACTER_NAMES[match.opponentId - 1],
+      seed, palette, isAI: true, characterId: match.opponentId, name: match.opponentName || CHARACTER_NAMES[match.opponentId - 1],
     });
     player.opponent = cpu;
     cpu.opponent = player;
@@ -5104,6 +5375,9 @@ function restart() {
   }
   match.result = null;
   match.newMascot = null;
+  match.stars = null;
+  ui.p2Col.classList.toggle("boss", !!match.boss);
+  if (match.biome) ui.p2Col.style.setProperty("--boss-c", match.biome.color);
   player.mascotId = playerMascotId();
   if (boards[1]) boards[1].mascotId = match.opponentMascot || null;
   useBoard(player);
