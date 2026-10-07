@@ -1226,6 +1226,7 @@ const CRYSTAL_COMBO_WINDOW_MS = 1800;            // clears na janela se somam no
 const CRYSTAL_COMBO_WIDTHS = { 4: 3, 5: 4, 6: 5 }; // combo de N painéis → largura (7+ = largura inteira)
 const CRYSTAL_MAX_HEIGHT = 8;                    // cadeia: x2 = 1 linha, cada elo a mais +1, até isto
 const CRYSTAL_DROP_DELAY_MS = 1500;              // tempo na fila (visível) antes de cair
+const CRYSTAL_MIN_WIDTH = 3;   // sobra de cancelamento mais estreita que isto some (não existe cristal de 1 ou 2 casas)
 const CRYSTAL_WRONG_HITS = 4;  // matches de elementos que o cristal não tem até rachar a linha de baixo
 const CRYSTAL_BREAK_POINTS_PER_CELL = 20;
 
@@ -4030,7 +4031,8 @@ function consumeCells(list, n) {
     const full = Math.floor(left / c.w), part = left % c.w;
     const rest = [];
     if (full > 0) rest.push({ ...c, h: full });
-    if (part > 0) rest.push({ ...c, w: part, h: 1 }); // linha incompleta segue com a largura que restou
+    // linha incompleta segue com a largura que restou, se não ficar estreita demais
+    if (part >= CRYSTAL_MIN_WIDTH) rest.push({ ...c, w: part, h: 1 });
     list.splice(0, 1, ...rest);
   }
 }
