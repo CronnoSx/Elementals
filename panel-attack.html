@@ -1464,6 +1464,8 @@ const Sound = {
   unlock() {
     if (!this.started) {
       this.started = true;
+      // iPhone: tocar como mídia, para o som sair mesmo com a chave do silencioso ligada (iOS 16.4+)
+      try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
       const AC = window.AudioContext || window.webkitAudioContext;
       if (AC) {
         this.ctx = new AC();
@@ -1472,7 +1474,15 @@ const Sound = {
       }
       new Set([...Object.values(SOUND_FILES).flat(), MUSIC_FILE]).forEach(file => this.load(file));
     }
-    if (this.ctx && this.ctx.state === "suspended") this.ctx.resume();
+    // "suspended" (ainda sem gesto) ou "interrupted" (iPhone após ligação, outro app ou tela bloqueada)
+    if (this.ctx && this.ctx.state !== "running") {
+      this.ctx.resume().catch(() => {});
+      // iPhone: tocar um som vazio dentro do toque é o que destrava o áudio de verdade
+      const blank = this.ctx.createBufferSource();
+      blank.buffer = this.ctx.createBuffer(1, 1, 22050);
+      blank.connect(this.ctx.destination);
+      blank.start(0);
+    }
   },
 
   async load(file) {
@@ -1596,6 +1606,10 @@ const Sound = {
 for (const type of ["pointerdown", "touchend", "click", "keydown"]) { // touchend/click: o iPhone só libera o som nesses
   document.addEventListener(type, () => Sound.unlock(), { capture: true });
 }
+// Voltando para a aba/app: tenta religar o áudio (se o iPhone exigir, o próximo toque religa)
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && Sound.ctx && Sound.ctx.state !== "running") Sound.ctx.resume().catch(() => {});
+});
 
 // Clique em qualquer botão da interface
 document.addEventListener("click", (e) => {
