@@ -1902,14 +1902,6 @@ function createNextRow(rng, palette) {
   return row;
 }
 
-/** Re-sorteia apenas as casas da prévia que agora criariam match. */
-function fixNextRow(row, grid, rng, palette) {
-  for (let x = 0; x < CONFIG.COLS; x++) {
-    const forbidden = forbiddenForNewRow(row, x, grid);
-    if (forbidden.has(row[x])) row[x] = randomColorExcept(forbidden, rng, palette);
-  }
-}
-
 /**
  * Intervalo normal (ms) para subir uma linha, em função do tempo de partida.
  * Curva exponencial suave até os 5 min, depois salto + queda mais íngreme.
@@ -3786,10 +3778,13 @@ function updateRise(dt) {
   }
 }
 
-/** Empurra a grade uma linha para cima e insere a nova linha no fundo. */
+/**
+ * Empurra a grade uma linha para cima e insere a nova linha no fundo.
+ * A linha entra exatamente como apareceu na prévia: o jogador pode montar
+ * combinações e cadeias contando com ela.
+ */
 function pushRow() {
   const g = state.grid;
-  fixNextRow(state.nextRow, g, state.rng, state.palette);
   g.shift();
   g.push(state.nextRow.map(color => makePanel(color)));
   for (const c of state.crystals.values()) c.y0 -= 1;
