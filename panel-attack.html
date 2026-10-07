@@ -1201,7 +1201,7 @@ const EMPTY = null; // célula vazia
 const GAME_TITLE = "Edição Elemental"; // nome do jogo em todos os textos visíveis
 
 /* ---------- Núcleo: tempos dos painéis (multiplicados pela velocidade das animações) ---------- */
-const HOVER_MS = 140;               // painel "flutua" esse tempo antes de cair (após um clear embaixo)
+const HOVER_MS = 220;               // painel "flutua" esse tempo antes de cair (após um clear embaixo)
 const FALL_STEP_MS = 30;            // tempo para um painel cair uma casa
 const CRYSTAL_BREAK_HOLD_MS = 260;  // painéis vindos de cristal quebrado ficam parados antes de cair
 const CHAIN_LAND_HOLD_MS = 160;     // painel da cadeia que pousou continua "da cadeia" por este tempo
@@ -3656,21 +3656,26 @@ function applyFall(dt) {
     }
   }
   if (landedCount) Sound.play(landedCount >= FALL_MULTI_MIN_BLOCKS ? "fallMulti" : "fall", { gap: 70 });
-  // Cristais: de baixo para cima; descem uma casa quando toda a base estiver livre
+  // Cristais: de baixo para cima. Descem quando toda a base está livre e, se o que está
+  // embaixo está flutuando/caindo, acompanham no mesmo ritmo (colados), para pousarem
+  // junto com a peça e um match dela no pouso já encostar no cristal.
   const list = [...state.crystals.values()].filter(c => !c.breaking).sort((a, b) => (b.y0 + b.h) - (a.y0 + a.h));
   for (const c of list) {
-    const bottom = c.y0 + c.h - 1;
-    let free = bottom + 1 < CONFIG.ROWS;
-    let waitFall = false;
-    for (let x = c.x0; free && x < c.x0 + c.w; x++) {
-      const below = g[bottom + 1][x];
-      if (below === EMPTY) continue;
-      if (fallingish(below)) waitFall = true;
-      free = false;
-    }
-    if (!free) { if (!waitFall) c.fallP = 0; continue; }
-    c.fallP += step;
-    if (c.fallP >= 1) {
+    let advanced = false;
+    for (;;) {
+      const bottom = c.y0 + c.h - 1;
+      if (bottom + 1 >= CONFIG.ROWS) { c.fallP = 0; break; }
+      let blocked = false, follow = Infinity;
+      for (let x = c.x0; x < c.x0 + c.w; x++) {
+        const below = g[bottom + 1][x];
+        if (below === EMPTY) continue;
+        if (!fallingish(below)) { blocked = true; break; }
+        follow = Math.min(follow, below.state === PanelState.FALLING ? below.fallP : 0);
+      }
+      if (blocked) { c.fallP = 0; break; }
+      if (follow !== Infinity) { c.fallP = follow; break; } // colado na peça que cai embaixo
+      if (!advanced) { c.fallP += step; advanced = true; }
+      if (c.fallP < 1) break;
       c.fallP -= 1;
       clearCrystalCells(c);
       c.y0 += 1;
