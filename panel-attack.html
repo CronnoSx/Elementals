@@ -549,6 +549,7 @@
   #goalBox { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line); }
   #goalBox b { display: block; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
   #goalDesc { font-size: 13px; margin: 2px 0; }
+  #goalHint { font-size: 12px; line-height: 1.35; color: var(--muted); margin: 4px 0 6px; }
   #goalBox span { font-size: 16px; font-weight: 700; }
   /* Chefe: tabuleiro da IA com a aura do bioma */
   .board-col.p2.boss .board-canvas { border-color: var(--boss-c, var(--accent)); box-shadow: 0 0 18px 3px var(--boss-c, var(--accent)); }
@@ -1128,7 +1129,7 @@
         <div class="stat"><div class="label">Linhas/min</div><div class="value" id="speed">0</div></div>
       </div>
       <div id="chainMsg"></div>
-      <div id="goalBox" hidden><b>Objetivo</b><div id="goalDesc"></div><span id="goalText"></span></div>
+      <div id="goalBox" hidden><b>Objetivo</b><div id="goalDesc"></div><div id="goalHint"></div><span id="goalText"></span></div>
       <div class="side-actions">
         <button class="side-btn" id="restartBtn">Reiniciar</button>
         <button class="side-btn secondary" id="menuBtn">Menu</button>
@@ -2080,6 +2081,15 @@ function challengeText(biome) {
   return `Limpe ${CHALLENGE_CLEAR_COUNT} blocos de ${el ? el.name : biome.name}`;
 }
 
+/** Explicação curta do desafio, para quem não conhece o termo. */
+function challengeHint(biome) {
+  const type = BIOME_CHALLENGES[biome.id];
+  if (type === "survive") return "Não deixe a pilha encostar no topo até o tempo acabar.";
+  if (type === "chain") return `Cadeia: um grupo some, as peças de cima caem e formam outro grupo sozinhas. ` +
+    `x${CHALLENGE_CHAIN} = ${CHALLENGE_CHAIN} grupos seguidos. Dica: monte uma combinação logo acima de outra antes de soltar a primeira.`;
+  return "Só contam os blocos desse elemento; combine-os em grupos de 3 ou mais.";
+}
+
 /** Progresso do desafio da partida atual (do tabuleiro do jogador). */
 function challengeProgress() {
   const st = boards[0];
@@ -2222,7 +2232,11 @@ function startMatch() {
   const beginner = match.beginner ? " · Iniciante (5 elementos)" : "";
   $("matchSub").hidden = !match.versus && !match.beginner && !campaign;
   $("goalBox").hidden = !match.challenge;
-  if (match.challenge) { $("goalDesc").textContent = challengeText(match.biome); $("goalText").textContent = ""; }
+  if (match.challenge) {
+    $("goalDesc").textContent = challengeText(match.biome);
+    $("goalHint").textContent = challengeHint(match.biome);
+    $("goalText").textContent = "";
+  }
   $("matchSub").textContent = (campaign ? `${heroName()} · Fase ${match.stageIndex + 1}/${STAGES_PER_BIOME} · `
       + (match.boss ? `Chefe: Guardião ${BIOME_OF[match.biome.id] || ""}` : match.versus ? `IA ${levelLabel}` : CAMPAIGN_STAGES[match.stageIndex].name)
     : match.versus ? `vs ${CHARACTER_NAMES[match.opponentId - 1]} · IA ${levelLabel}` : "Endless").concat(beginner);
